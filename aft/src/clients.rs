@@ -145,11 +145,11 @@ where
         }
     }
 
-    /// Gets shared secret from the endpoints and creates a new "encryptor" objec to encrypt the
+    /// Gets shared secret from both endpoints and creates a new "encryptor" object to encrypt the
     /// connection.
     fn shared_secret(&mut self) -> io::Result<()>;
 
-    /// The main function for downloading from a P2P (sender -> receiver) or from a server.
+    /// The main function for downloading in a P2P mode (sender -> receiver) or from a server.
     fn download(&mut self) -> io::Result<bool> {
         info!("Waiting ...");
 
@@ -185,7 +185,7 @@ pub trait Crypto {
     /// Returns the other party public key.
     fn exchange_pk(&mut self, pk: PublicKey) -> io::Result<PublicKey>;
 
-    /// Generates a public key and a secret key and generates a shared secret.
+    /// Generates a public key and a secret key and finally a shared secret.
     ///
     /// Returns a shared secret.
     fn gen_shared_secret(&mut self) -> io::Result<X25519Key> {
@@ -277,7 +277,7 @@ where
         Ok(self.read_signal()? == Signals::OK)
     }
 
-    /// The main method when connecting to a server. Handles the transfer process.
+    /// The main method when connecting to a server. Handles the transferring process.
     pub fn init(&mut self, register: bool, pass: &mut String) -> io::Result<bool> {
         if !self.is_connected_to_server()? {
             error!("Not a server");
