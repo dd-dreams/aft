@@ -1,0 +1,11 @@
+target/
+# vim files
+*.swp
+*.swo
+*.swn
+*.swm
+
+*.txt
+*.tmp
+# ignore database directory
+**/ftdb
