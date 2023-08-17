@@ -77,15 +77,21 @@ pub trait BaseSocket<T>
 where
     T: AeadInPlace
 {
+    /// Returns the writer used in the connection.
     fn get_writer(&self) -> &SWriter<T>;
 
+    /// Returns a mutable writer used in the connection.
     fn get_mut_writer(&mut self) -> &mut SWriter<T>;
 
+    /// Signals to the endpoint to start the file transfer process.
     fn signal_start(&mut self) -> io::Result<()> {
         self.get_mut_writer().write(Signals::StartFt.as_bytes())?;
         Ok(())
     }
 
+    /// Reads a signal from the endpoint.
+    ///
+    /// Returns the signal.
     fn read_signal(&mut self) -> io::Result<Signals> {
         let mut signal = [0u8; SIGNAL_LEN];
         self.get_mut_writer().read_exact(&mut signal)?;
@@ -93,6 +99,9 @@ where
         Ok(signal.as_str().into())
     }
 
+    /// Reads the metadata.
+    ///
+    /// Returns a JSON object of the metadata.
     fn read_metadata(&mut self) -> io::Result<json::JsonValue> {
         let mut metadata = [0; MAX_METADATA_LEN];
         let bytes_read = self.get_mut_writer().read(&mut metadata)?;
@@ -101,6 +110,9 @@ where
         Ok(metadata_json)
     }
 
+    /// Reads chunks of the file from the endpoint and writes them into a file object.
+    ///
+    /// Returns the file-checksum of the sender's.
     fn read_write_data(&mut self, file: &mut FileOperations) -> io::Result<Vec::<u8>> {
         let mut content = [0; MAX_CONTENT_LEN];
 
@@ -118,9 +130,8 @@ where
         Ok(content[SIGNAL_LEN..MAX_CHECKSUM_LEN+SIGNAL_LEN].to_vec())
     }
 
-    /// Read checksum from sender and check if they're equal.
-    ///
     /// Returns true if checksums are equal, false if they're not.
+    ///
     /// Returns error when there is a connection error.
     fn check_checksum(&mut self, checksum: &[u8], file_checksum: &[u8]) -> bool {
         debug!("Checking checksum");
@@ -134,8 +145,11 @@ where
         }
     }
 
+    /// Gets shared secret from the endpoints and creates a new "encryptor" objec to encrypt the
+    /// connection.
     fn shared_secret(&mut self) -> io::Result<()>;
 
+    /// The main function for downloading from a P2P (sender -> receiver) or from a server.
     fn download(&mut self) -> io::Result<bool> {
         info!("Waiting ...");
 
@@ -237,6 +251,9 @@ where
         }
     }
 
+    /// Checks if the receiver is connected to a server.
+    ///
+    /// Returns true if yes, and false if not.
     pub fn is_connected_to_server(&mut self) -> io::Result<bool> {
         let mut server_or_client = [0u8; 1];
         self.writer.0.read_exact(&mut server_or_client)?;
@@ -246,12 +263,13 @@ where
         Ok(true)
     }
 
+    /// Sends a signal to register.
     fn register(&mut self) -> io::Result<()> {
-        // Request to register
         self.writer.0.write(Signals::Register.as_bytes())?;
         Ok(())
     }
 
+    /// Sends a signal to login.
     fn login(&mut self) -> io::Result<bool> {
         // Request to login
         self.writer.0.write(Signals::Login.as_bytes())?;
@@ -259,6 +277,7 @@ where
         Ok(self.read_signal()? == Signals::OK)
     }
 
+    /// The main method when connecting to a server. Handles the transfer process.
     pub fn init(&mut self, register: bool, pass: &mut String) -> io::Result<bool> {
         if !self.is_connected_to_server()? {
             error!("Not a server");
@@ -370,6 +389,9 @@ where
         }
     }
 
+    /// Authenticates with the sender's end.
+    ///
+    /// Returns true if the password received from the sender is the correct password, else false.
     pub fn auth(&mut self, correct_pass: &str) -> io::Result<bool> {
         debug!("Authenticating ...");
 
@@ -389,6 +411,7 @@ where
         }
     }
 
+    /// The main function for receiving in P2P mode (sender -> receiver).
     pub fn receive(&mut self, pass: &str) -> io::Result<bool> {
         // Write to the sender that its connecting to a receiver
         self.writer.0.write(&[CLIENT_RECV])?;
