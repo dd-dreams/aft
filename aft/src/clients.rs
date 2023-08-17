@@ -257,10 +257,7 @@ where
     pub fn is_connected_to_server(&mut self) -> io::Result<bool> {
         let mut server_or_client = [0u8; 1];
         self.writer.0.read_exact(&mut server_or_client)?;
-        if server_or_client[0] != SERVER {
-            return Ok(false);
-        }
-        Ok(true)
+        Ok(server_or_client[0] == SERVER)
     }
 
     /// Sends a signal to register.
@@ -271,9 +268,7 @@ where
 
     /// Sends a signal to login.
     fn login(&mut self) -> io::Result<bool> {
-        // Request to login
         self.writer.0.write(Signals::Login.as_bytes())?;
-
         Ok(self.read_signal()? == Signals::OK)
     }
 
