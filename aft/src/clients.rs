@@ -5,7 +5,8 @@ use std::io::{Write, Read};
 use std::io;
 use sha2::{Sha256, Digest};
 use crate::utils::{Signals, bytes_to_string, write_sized_buffer, FileOperations, get_accept_input};
-use crate::constants::{SIGNAL_LEN, SERVER, CLIENT_RECV, MAX_CHECKSUM_LEN, MAX_METADATA_LEN, MAX_CONTENT_LEN};
+use crate::constants::{SIGNAL_LEN, SERVER, CLIENT_RECV,
+    MAX_CHECKSUM_LEN, MAX_METADATA_LEN, MAX_CONTENT_LEN};
 use log::{error, info, debug};
 use aft_crypto::{
     password_encryption::Zeroize,

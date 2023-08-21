@@ -21,7 +21,7 @@ use crate::utils::{new_ip,
                    error_other,
                    Signals,
                    write_sized_buffer_async};
-use crate::constants::{MAX_CHUNK_LEN, MAX_METADATA_LEN, MAX_IDENTIFIER_LEN,
+use crate::constants::{MAX_CONTENT_LEN, MAX_METADATA_LEN, MAX_IDENTIFIER_LEN,
     SERVER, CLIENT_RECV, SIGNAL_LEN, PASS_LEN};
 use crate::errors::Errors;
 use log::{info, error, debug};
@@ -315,7 +315,7 @@ async fn process_proxied(sender: &mut TcpStream, receiver: &mut TcpStream) ->
     sender.write_all(&file_current_size).await?;
 
     loop {
-        let buffer = match read_sized_buffer(sender, MAX_CHUNK_LEN).await {
+        let buffer = match read_sized_buffer(sender, MAX_CONTENT_LEN).await {
             Ok(v) => v,
             Err(_) => {
                 // Wait for everything to be written
