@@ -15,7 +15,7 @@ use aft_crypto::{exchange::{PublicKey, KEY_LENGTH},
     data::{EncAlgo, AeadInPlace}};
 
 fn update_pb(curr_bars_count: &mut u8, pb_length: u64, bytes_transferred: u64) {
-    *curr_bars_count = (bytes_transferred / pb_length + 1).try_into().unwrap_or(0);
+    *curr_bars_count = (bytes_transferred / (pb_length + 1)).try_into().unwrap_or(0);
     progress_bar(*curr_bars_count, 50);
 }
 
