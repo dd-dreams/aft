@@ -115,12 +115,13 @@ where
     /// Reads chunks of the file from the endpoint and writes them into a file object.
     ///
     /// Returns the file-checksum of the sender's.
-    fn read_write_data(&mut self, file: &mut FileOperations) -> io::Result<Vec::<u8>> {
+    fn read_write_data(&mut self, file: &mut FileOperations, supposed_len: u64) -> io::Result<Vec::<u8>> {
         let mut content = [0; MAX_CONTENT_LEN];
 
         loop {
             self.get_mut_writer().read_exact(&mut content)?;
             if &content[..SIGNAL_LEN] == Signals::EndFt.as_bytes() {
+                file.file.set_len(supposed_len)?;
                 break;
             }
 
@@ -170,7 +171,7 @@ where
             self.get_mut_writer().write_all(&[0u8; 8])?;
         }
 
-        let checksum = self.read_write_data(&mut file)?;
+        let checksum = self.read_write_data(&mut file, sizeb)?;
         if !self.check_checksum(&checksum, &file.checksum()) {
             return Ok(false)
         }
