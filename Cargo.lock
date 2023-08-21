@@ -39,7 +39,7 @@ dependencies = [
 
 [[package]]
 name = "aft"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "aft-crypto",
  "env_logger",

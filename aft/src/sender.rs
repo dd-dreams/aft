@@ -15,7 +15,7 @@ use aft_crypto::{exchange::{PublicKey, KEY_LENGTH},
     data::{EncAlgo, AeadInPlace}};
 
 fn update_pb(curr_bars_count: &mut u8, pb_length: u64, bytes_transferred: u64) {
-    *curr_bars_count = (bytes_transferred / pb_length).try_into().unwrap_or(0);
+    *curr_bars_count = (bytes_transferred / pb_length + 1).try_into().unwrap_or(0);
     progress_bar(*curr_bars_count, 50);
 }
 
@@ -124,7 +124,6 @@ where
         let pass_encrypted = {let mut sha = Sha256::new(); sha.update(pass); sha.finalize()};
 
         debug!("Authenticating ...");
-        // TODO: Add encryption to password
         self.writer.write(&pass_encrypted)?;
 
         Ok(self.read_signal()? == Signals::OK)
@@ -268,7 +267,6 @@ where
             self.writer.write(&buffer)?;
 
             // Progress bar
-            // TODO: fix overflow
             update_pb(&mut curr_bars_count, pb_length, self.current_pos);
         }
 
