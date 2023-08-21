@@ -1,8 +1,7 @@
 //! Clients.
 
 use std::net::{TcpStream, TcpListener};
-use std::io::{Write, Read};
-use std::io;
+use std::io::{self, Write, Read};
 use sha2::{Sha256, Digest};
 use crate::utils::{Signals, bytes_to_string, write_sized_buffer, FileOperations, get_accept_input};
 use crate::constants::{SIGNAL_LEN, SERVER, CLIENT_RECV,
@@ -139,7 +138,6 @@ where
     fn check_checksum(&mut self, checksum: &[u8], file_checksum: &[u8]) -> bool {
         debug!("Checking checksum");
         if checksum != file_checksum {
-            // TODO: What shall the program do with the downloaded data?
             error!("Checksum not equal");
             false
         } else {
@@ -171,13 +169,17 @@ where
             self.get_mut_writer().write_all(&[0u8; 8])?;
         }
 
+        let filename = metadata["metadata"]["filename"].as_str().unwrap_or("null");
+
         let checksum = self.read_write_data(&mut file, sizeb)?;
         if !self.check_checksum(&checksum, &file.checksum()) {
-            return Ok(false)
+            if get_accept_input("Keep the file? ").expect("Couldn't read answer") != 'y' {
+                FileOperations::rm(&format!(".{}.tmp", filename))?;
+                return Ok(false)
+            }
         }
 
-        std::fs::rename(&format!(".{}.tmp", metadata["metadata"]["filename"].as_str().unwrap_or("null")),
-            metadata["metadata"]["filename"].as_str().unwrap_or("null"))?;
+        FileOperations::rename(&format!(".{}.tmp", filename), filename)?;
         Ok(true)
     }
 }
@@ -313,7 +315,7 @@ where
             return Ok(false)
         }
 
-        match get_accept_input()? {
+        match get_accept_input("Someone wants to send you a file (y/n/b): ")? {
             'y' => self.writer.write(Signals::OK.as_bytes())?,
             'n' => {self.writer.write(Signals::Error.as_bytes())?; return Ok(false)},
             'b' => {self.writer.write(Signals::Other.as_bytes())?; return Ok(false)},

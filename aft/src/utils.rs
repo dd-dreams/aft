@@ -1,6 +1,6 @@
 /// Module for various utilities used in other modules.
 
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::SeekFrom;
 use tokio::io::AsyncWriteExt;
@@ -218,6 +218,15 @@ impl FileOperations {
     pub fn reset_checksum(&mut self) {
         self.hasher.reset();
     }
+
+    /// Removes a file.
+    pub fn rm(path: &str) -> io::Result<()> {
+        fs::remove_file(path)
+    }
+
+    pub fn rename(filename: &str, new_filename: &str) -> io::Result<()> {
+        fs::rename(filename, new_filename)
+    }
 }
 
 /// Writes data to buffer. It firsts sends to the endpoint the size of incoming data, then writes
@@ -320,10 +329,10 @@ pub fn read_sized_json(socket: &mut TcpStream, keys: &[&str], size: usize) -> io
     Ok(data_json)
 }
 
-pub fn get_accept_input() -> io::Result<char> {
+pub fn get_accept_input(msg: &str) -> io::Result<char> {
     let mut input = [0; 1];
+    print!("{}", msg);
     io::stdout().flush()?;
-    print!("Someone wants to send you a file (y/n/b): ");
     io::stdin().read_exact(&mut input)?;
 
     let res = input[0] as char;
