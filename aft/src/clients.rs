@@ -18,10 +18,11 @@ use aft_crypto::{
 /// Returns the file object, and boolean saying if it was newly created or opened.
 /// Error when there was an error creating or opening a file.
 fn checks_open_file(metadata: &json::JsonValue)  -> io::Result<(FileOperations, bool)> {
-    // TODO: Make sure that `filename` (which can be also a path) will not overwrite important
-    // files (like files in /boot and other) (it shouldn't be possible because this program
-    // will probably not be running as root).
-    let filename = &format!(".{}.tmp", metadata["metadata"]["filename"].as_str().unwrap_or("null"));
+    // Removing "/" at the start, to avoid unwanted behavior. There should be a warning about it at
+    // the sender's side.
+    let filename_trimmed = metadata["metadata"]["filename"].as_str().unwrap_or("null").trim_start_matches('/');
+    // (filename is not a path).
+    let filename = &format!(r"./.{}.tmp", filename_trimmed);
 
     if FileOperations::is_file_exists(filename) {
         let mut file = FileOperations::new(filename)?;
