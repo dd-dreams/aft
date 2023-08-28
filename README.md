@@ -21,6 +21,7 @@ Allows using a middle server instead of two devices connecting to each other dir
 - No port forward needed on the receiver's end.
 - No direct contact between the receiver and the sender.
 - Better privacy - no IP sharing.
+
 IN PROGRESS (CURRENTLY NOT WORKING).
 
 # Usage
