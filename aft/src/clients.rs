@@ -3,7 +3,7 @@
 use std::net::{TcpStream, TcpListener};
 use std::io::{self, Write, Read};
 use sha2::{Sha256, Digest};
-use crate::utils::{Signals, bytes_to_string, write_sized_buffer, FileOperations, get_accept_input};
+use crate::utils::{Signals, bytes_to_string, write_sized_buffer, FileOperations, get_accept_input, mut_vec};
 use crate::constants::{SIGNAL_LEN, SERVER, CLIENT_RECV,
     MAX_CHECKSUM_LEN, MAX_METADATA_LEN, MAX_CONTENT_LEN};
 use log::{error, info, debug};
@@ -74,6 +74,42 @@ where
     }
 }
 
+impl<T> SWriter<T>
+where
+    T: AeadInPlace
+{
+    /// Better implementation of `write`. Instead of creating a new buffer to encrypt to, it writes
+    /// and encrypts "in place".
+    ///
+    /// Use this method for better efficiency.
+    pub fn write_ext(&mut self, buf: &mut Vec<u8>) -> io::Result<()> {
+        // Automatically adds the tag and the nonce.
+        self.1.encrypt_in_place(buf).expect("Could not encrypt.");
+        self.0.write(buf)?;
+
+        buf.truncate(buf.len() - AES_GCM_TAG_SIZE - AES_GCM_NONCE_SIZE);
+        Ok(())
+    }
+
+    /// Better implementation of `read`. Instead of creating a new buffer to read to, it reads "in
+    /// place".
+    ///
+    /// Use this method for better efficiency.
+    pub fn read_ext(&mut self, buf: &mut Vec<u8>) -> io::Result<()> {
+        buf.extend_from_slice(&[0; AES_GCM_TAG_SIZE]);
+        // Reading the encrypted chunk
+        self.0.read_exact(buf)?;
+        let mut nonce = [0; AES_GCM_NONCE_SIZE];
+        // Reading the nonce
+        self.0.read_exact(&mut nonce)?;
+
+        // This method automatically removes the tag
+        self.1.decrypt_in_place(buf, &nonce).expect("Could not decrypt.");
+
+        Ok(())
+    }
+}
+
 pub trait BaseSocket<T>
 where
     T: AeadInPlace
@@ -86,7 +122,7 @@ where
 
     /// Signals to the endpoint to start the file transfer process.
     fn signal_start(&mut self) -> io::Result<()> {
-        self.get_mut_writer().write(Signals::StartFt.as_bytes())?;
+        self.get_mut_writer().write_ext(mut_vec!(Signals::StartFt.as_bytes()))?;
         Ok(())
     }
 
@@ -94,8 +130,8 @@ where
     ///
     /// Returns the signal.
     fn read_signal(&mut self) -> io::Result<Signals> {
-        let mut signal = [0u8; SIGNAL_LEN];
-        self.get_mut_writer().read_exact(&mut signal)?;
+        let mut signal = vec![0u8; SIGNAL_LEN];
+        self.get_mut_writer().read_ext(&mut signal)?;
         let signal = bytes_to_string(&signal);
         Ok(signal.as_str().into())
     }
@@ -115,10 +151,10 @@ where
     ///
     /// Returns the file-checksum of the sender's.
     fn read_write_data(&mut self, file: &mut FileOperations, supposed_len: u64) -> io::Result<Vec::<u8>> {
-        let mut content = [0; MAX_CONTENT_LEN];
+        let mut content = vec![0; MAX_CONTENT_LEN];
 
         loop {
-            self.get_mut_writer().read_exact(&mut content)?;
+            self.get_mut_writer().read_ext(&mut content)?;
             if &content[..SIGNAL_LEN] == Signals::EndFt.as_bytes() {
                 file.file.set_len(supposed_len)?;
                 break;
@@ -164,9 +200,9 @@ where
         let (mut file, existed) = checks_open_file(&metadata)?;
 
         if existed && file.len()? != sizeb {
-            self.get_mut_writer().write_all(&(file.len()?).to_le_bytes())?;
+            self.get_mut_writer().write_ext(mut_vec!((file.len()?).to_le_bytes()))?;
         } else {
-            self.get_mut_writer().write_all(&[0u8; 8])?;
+            self.get_mut_writer().write_ext(mut_vec!([0u8; 8]))?;
         }
 
         let filename = metadata["metadata"]["filename"].as_str().unwrap_or("null");
@@ -316,9 +352,11 @@ where
         }
 
         match get_accept_input("Someone wants to send you a file (y/n/b): ")? {
-            'y' => self.writer.write(Signals::OK.as_bytes())?,
-            'n' => {self.writer.write(Signals::Error.as_bytes())?; return Ok(false)},
-            'b' => {self.writer.write(Signals::Other.as_bytes())?; return Ok(false)},
+            'y' => self.writer.write_ext(mut_vec!(Signals::OK.as_bytes()))?,
+            'n' => {self.writer.write_ext(mut_vec!(Signals::Error.as_bytes()))?;
+                return Ok(false)},
+            'b' => {self.writer.write_ext(mut_vec!(Signals::Other.as_bytes()))?;
+                return Ok(false)},
             _ => panic!("Invalid input.")
         };
 
@@ -396,17 +434,17 @@ where
         debug!("Authenticating ...");
 
         // Sha256 is 256 bits => 256 / 8 => 32
-        let mut pass = [0; 32];
-        self.writer.read_exact(&mut pass)?;
+        let mut pass = vec![0; 32];
+        self.writer.read_ext(&mut pass)?;
 
         let mut sha = Sha256::new();
         sha.update(correct_pass);
 
         if pass == sha.finalize().as_slice() {
-            self.writer.write(Signals::OK.as_bytes())?;
+            self.writer.write_ext(mut_vec!(Signals::OK.as_bytes()))?;
             Ok(true)
         } else {
-            self.writer.write(Signals::Error.as_bytes())?;
+            self.writer.write_ext(mut_vec!(Signals::Error.as_bytes()))?;
             Ok(false)
         }
     }

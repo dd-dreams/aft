@@ -7,7 +7,7 @@ use std::io::{Write, Read};
 use json;
 use log::{error, warn, info, debug};
 use sha2::{Sha256, Digest};
-use crate::utils::{write_sized_buffer, FileOperations, error_other, progress_bar, Signals};
+use crate::utils::{write_sized_buffer, FileOperations, error_other, progress_bar, Signals, mut_vec};
 use crate::errors;
 use crate::constants::{MAX_METADATA_LEN, MAX_CONTENT_LEN, SERVER, CLIENT_SEND, MAX_CHECKSUM_LEN, SIGNAL_LEN};
 use crate::clients::{BaseSocket, Crypto, SWriter};
@@ -111,10 +111,10 @@ where
 
     fn get_starting_pos(&mut self) -> io::Result<()> {
         // Starting position from receiver
-        let mut file_pos_bytes = [0u8; 8];
+        let mut file_pos_bytes = vec![0u8; 8];
         debug!("Getting starting position ...");
-        self.writer.read_exact(&mut file_pos_bytes)?;
-        self.current_pos = u64::from_le_bytes(file_pos_bytes);
+        self.writer.read_ext(&mut file_pos_bytes)?;
+        self.current_pos = u64::from_le_bytes(file_pos_bytes.try_into().unwrap_or_default());
         debug!("Starting position: {}", self.current_pos);
 
         Ok(())
@@ -124,7 +124,7 @@ where
         let pass_encrypted = {let mut sha = Sha256::new(); sha.update(pass); sha.finalize()};
 
         debug!("Authenticating ...");
-        self.writer.write(&pass_encrypted)?;
+        self.writer.write_ext(mut_vec!(pass_encrypted))?;
 
         Ok(self.read_signal()? == Signals::OK)
     }
@@ -225,11 +225,11 @@ where
             return Err(error_other!(errors::Errors::BufferTooBig));
         }
 
-        let metadata_vec_bytes = parsed.dump().as_bytes().to_vec();
+        let mut metadata_vec_bytes = parsed.dump().as_bytes().to_vec();
 
         // Write metadata
         debug!("Sending metadata");
-        self.writer.write(&metadata_vec_bytes)?;
+        self.writer.write_ext(&mut metadata_vec_bytes)?;
 
         self.get_starting_pos()?;
         Ok(true)
@@ -251,7 +251,7 @@ where
             update_pb(&mut curr_bars_count, pb_length, self.current_pos);
         }
 
-        let mut buffer = vec![0u8; MAX_CONTENT_LEN];
+        let mut buffer = vec![0; MAX_CONTENT_LEN];
         loop {
             let read_size = file.read_seek_file_sized(&mut buffer)?;
             // If we reached EOF
@@ -264,7 +264,7 @@ where
             // chunk of the file).
             file.update_checksum(&buffer);
 
-            self.writer.write(&buffer)?;
+            self.writer.write_ext(&mut buffer)?;
 
             // Progress bar
             update_pb(&mut curr_bars_count, pb_length, self.current_pos);
@@ -274,7 +274,7 @@ where
         debug!("Writing checksum");
         buffer[..SIGNAL_LEN].copy_from_slice(Signals::EndFt.as_bytes());
         buffer[SIGNAL_LEN..MAX_CHECKSUM_LEN+SIGNAL_LEN].copy_from_slice(&file.checksum());
-        self.writer.write(&buffer)?;
+        self.writer.write_ext(&mut buffer)?;
         info!("Finished successfully");
 
         Ok(())

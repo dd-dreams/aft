@@ -114,6 +114,11 @@ macro_rules! error_other {
     ($E:expr) => {std::io::Error::new(io::ErrorKind::Other, $E)}
 } pub(crate) use error_other;
 
+
+macro_rules! mut_vec {
+    ($s:expr) => {&mut $s.to_vec()}
+} pub(crate) use mut_vec;
+
 /// Represents a client file. Provides special methods that are used in this program.
 pub struct FileOperations {
     pub file: File,
