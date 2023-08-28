@@ -270,6 +270,7 @@ where
             update_pb(&mut curr_bars_count, pb_length, self.current_pos);
         }
 
+        println!();
         debug!("Reached EOF");
         debug!("Writing checksum");
         buffer[..SIGNAL_LEN].copy_from_slice(Signals::EndFt.as_bytes());
