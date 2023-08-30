@@ -130,8 +130,7 @@ async fn main() {
         return;
     }
 
-    // TODO: Add crate's path instead of current directory
-    let config = Config::new(".config").unwrap_or_default();
+    let config = Config::new(&format!("{}/../.config", env!("CARGO_MANIFEST_DIR"))).unwrap_or_default();
     let mut verbose_mode = config.get_verbose();
 
     let mut cliargs = CliArgs::new(config.get_mode());
