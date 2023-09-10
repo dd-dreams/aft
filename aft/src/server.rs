@@ -19,8 +19,7 @@ use std::{io, net::SocketAddr};
 use crate::utils::{new_ip,
                    bytes_to_string,
                    error_other,
-                   Signals,
-                   write_sized_buffer_async};
+                   Signals};
 use crate::constants::{MAX_CONTENT_LEN, MAX_METADATA_LEN, MAX_IDENTIFIER_LEN,
     SERVER, CLIENT_RECV, SIGNAL_LEN, PASS_LEN};
 use crate::errors::Errors;
