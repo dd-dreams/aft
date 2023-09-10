@@ -97,6 +97,12 @@ where
         }
     }
 
+    /// Signals to the endpoint to start the file transfer process.
+    fn signal_start(&mut self) -> io::Result<()> {
+        self.get_mut_writer().0.write(Signals::StartFt.as_bytes())?;
+        Ok(())
+    }
+
     /// If the sender is connecting to a server (a proxy).
     ///
     /// # Errors
@@ -169,10 +175,11 @@ where
         let mut server_or_receiver = [0u8; 1];
         self.writer.0.read_exact(&mut server_or_receiver)?;
         if server_or_receiver[0] == SERVER {
+            debug!("Connected to a server");
             if let Some(ident) = receiver_identifier {
                 self.if_server(ident)?;
                 // Read signal
-                match self.read_signal()? {
+                match self.read_signal_server()? {
                     Signals::StartFt => (),
                     Signals::Error => {
                         error!("Receiver is not online.");
@@ -191,7 +198,7 @@ where
             debug!("Signaling to start");
             self.signal_start()?;
 
-            match self.read_signal()? {
+            match self.read_signal_server()? {
                 Signals::OK => (),
                 Signals::Error => {error!("Receiver did not accept the request."); return Ok(false)},
                 Signals::Other => {error!("Receiver blocked you."); return Ok(false)},
@@ -225,6 +232,7 @@ where
             return Err(error_other!(errors::Errors::BufferTooBig));
         }
 
+        // TODO: turn this vector into a static sized vector
         let mut metadata_vec_bytes = parsed.dump().as_bytes().to_vec();
 
         // Write metadata

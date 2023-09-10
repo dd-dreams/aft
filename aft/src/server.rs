@@ -31,7 +31,7 @@ use tokio::sync::RwLock;
 use crate::database::Database;
 use aft_crypto::{
     password_encryption::create_hash,
-    exchange::KEY_LENGTH};
+    exchange::KEY_LENGTH, data::{AES_GCM_NONCE_SIZE, AES_GCM_TAG_SIZE}};
 
 
 pub const UNFINISHED_FILE_MSG: &str = "undone";
@@ -303,27 +303,30 @@ pub async fn init(mut server: Server) -> io::Result<()> {
 async fn process_proxied(sender: &mut TcpStream, receiver: &mut TcpStream) ->
     io::Result<Signals>
 {
-    let metadata = read_sized_buffer(sender, MAX_METADATA_LEN).await?;
+    // TODO: simplify arrays sizes by using another constant
+    let mut metadata = [0; MAX_METADATA_LEN + AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE];
+    let read_bytes = sender.read(&mut metadata).await?;
     // Write metadata to receiver
-    write_sized_buffer_async(receiver, &metadata).await?;
+    receiver.write_all(&metadata[..read_bytes]).await?;
 
     info!("Received a transfer request from {} to {}", sender.peer_addr()?.ip(), receiver.peer_addr()?.ip());
-    let mut file_current_size = [0u8; 8];
+    let mut file_current_size = [0u8; 8 + AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE];
     // Read from the receiver the file size
     receiver.read_exact(&mut file_current_size).await?;
     // Send the file size to the sender, so he will know where to start
     sender.write_all(&file_current_size).await?;
 
+    let mut buffer = [0; MAX_CONTENT_LEN + AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE];
     loop {
-        let buffer = match read_sized_buffer(sender, MAX_CONTENT_LEN).await {
-            Ok(v) => v,
+        match sender.read_exact(&mut buffer).await {
+            Ok(_) => (),
             Err(_) => {
                 // Wait for everything to be written
                 receiver.shutdown().await?;
                 break;
             }
         };
-        match write_sized_buffer_async(receiver, &buffer).await {
+        match receiver.write_all(&buffer).await {
             Ok(_) => (),
             Err(_) => {
                 break;

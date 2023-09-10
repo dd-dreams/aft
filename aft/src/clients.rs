@@ -120,12 +120,6 @@ where
     /// Returns a mutable writer used in the connection.
     fn get_mut_writer(&mut self) -> &mut SWriter<T>;
 
-    /// Signals to the endpoint to start the file transfer process.
-    fn signal_start(&mut self) -> io::Result<()> {
-        self.get_mut_writer().write_ext(mut_vec!(Signals::StartFt.as_bytes()))?;
-        Ok(())
-    }
-
     /// Reads a signal from the endpoint.
     ///
     /// Returns the signal.
@@ -133,6 +127,17 @@ where
         let mut signal = vec![0u8; SIGNAL_LEN];
         self.get_mut_writer().read_ext(&mut signal)?;
         let signal = bytes_to_string(&signal);
+        Ok(signal.as_str().into())
+    }
+
+    /// Reads a signal from a server.
+    ///
+    /// Returns the signal.
+    fn read_signal_server(&mut self) -> io::Result<Signals> {
+        let mut signal = vec![0u8; SIGNAL_LEN];
+        self.get_mut_writer().0.read(&mut signal)?;
+        let signal = bytes_to_string(&signal);
+
         Ok(signal.as_str().into())
     }
 
@@ -153,6 +158,7 @@ where
     fn read_write_data(&mut self, file: &mut FileOperations, supposed_len: u64) -> io::Result<Vec::<u8>> {
         let mut content = vec![0; MAX_CONTENT_LEN];
 
+        info!("Reading file chunks ...");
         loop {
             self.get_mut_writer().read_ext(&mut content)?;
             if &content[..SIGNAL_LEN] == Signals::EndFt.as_bytes() {
@@ -310,7 +316,7 @@ where
     /// Sends a signal to login.
     fn login(&mut self) -> io::Result<bool> {
         self.writer.0.write(Signals::Login.as_bytes())?;
-        Ok(self.read_signal()? == Signals::OK)
+        Ok(self.read_signal_server()? == Signals::OK)
     }
 
     /// The main method when connecting to a server. Handles the transferring process.
@@ -324,12 +330,13 @@ where
         // Write the identifier of this receiver
         write_sized_buffer(&mut self.writer.0, self.ident.as_bytes())?;
         // Send the password to the server
+        // TODO: pass should be encrypted
         write_sized_buffer(&mut self.writer.0, pass.as_bytes())?;
 
         if register {
             info!("Requesting to register ...");
             self.register()?;
-            if self.read_signal()? == Signals::Error {
+            if self.read_signal_server()? == Signals::Error {
                 info!("Already registered. Aborting");
                 return Ok(false)
             }
@@ -346,16 +353,16 @@ where
         pass.zeroize();
 
         info!("Waiting for requests ...");
-        if self.read_signal()? != Signals::StartFt {
+        if self.read_signal_server()? != Signals::StartFt {
             error!("Invalid signal.");
             return Ok(false)
         }
 
         match get_accept_input("Someone wants to send you a file (y/n/b): ")? {
-            'y' => self.writer.write_ext(mut_vec!(Signals::OK.as_bytes()))?,
-            'n' => {self.writer.write_ext(mut_vec!(Signals::Error.as_bytes()))?;
+            'y' => self.writer.0.write(Signals::OK.as_bytes())?,
+            'n' => {self.writer.0.write(Signals::Error.as_bytes())?;
                 return Ok(false)},
-            'b' => {self.writer.write_ext(mut_vec!(Signals::Other.as_bytes()))?;
+            'b' => {self.writer.0.write(Signals::Other.as_bytes())?;
                 return Ok(false)},
             _ => panic!("Invalid input.")
         };
