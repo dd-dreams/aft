@@ -1,7 +1,7 @@
 //! Database implementation using PostgreSQL.
 use tokio_postgres::{NoTls, Client};
 use log::error;
-use crate::constants::MAX_IDENTIFIER_LEN;
+use crate::constants::{MAX_IDENTIFIER_LEN, MAX_BLOCKS_LEN};
 use tokio;
 use aft_crypto::password_encryption::PHC_STR_LEN;
 
@@ -42,7 +42,7 @@ impl Database {
             identifier varchar({}),
             scrypt varchar({}),
             blocks varchar({})
-            )", MAX_IDENTIFIER_LEN, PHC_STR_LEN, 3000 /* TODO */ ), &[]).await {
+            )", MAX_IDENTIFIER_LEN, PHC_STR_LEN, MAX_BLOCKS_LEN), &[]).await {
             Ok(_) => (),
             Err(e) => panic!("{:?}", e)
         }

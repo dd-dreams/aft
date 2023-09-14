@@ -17,6 +17,8 @@ pub const MAX_METADATA_LEN: usize = MAX_NAME_LEN + MAX_TYPE_LEN + MAX_SIZE_LEN +
 pub const MAX_CONTENT_LEN: usize = 65536;
 /// Maximum checksum length (Sha256 length in bytes).
 pub const MAX_CHECKSUM_LEN: usize = 32;
+/// Length of a blocks column.
+pub const MAX_BLOCKS_LEN: usize = 3000;
 /// Code for a client that sends data.
 pub const CLIENT_SEND: u8 = 0;
 /// Code for a client that receives data.
