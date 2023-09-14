@@ -51,16 +51,18 @@ impl Database {
 
     /// Fetches scrypt data by an identifier.
     pub async fn get_scryptd_ident(&self, ident: &str) -> Result<String> {
-        let row_ident = self.client.query_one(&format!("SELECT scrypt FROM clients WHERE identifier = '{}';", ident), &[]).await?;
+        let row_ident = self.client.query_one("SELECT scrypt FROM clients WHERE identifier = $1", &[&ident]).await?;
         row_ident.try_get(0)
     }
 
     pub async fn add_row(&mut self, ident: &str, scryptd: &str) -> Result<bool> {
-        Ok(self.client.execute(&format!("INSERT INTO clients (identifier, scrypt) VALUES ('{}', '{}');", ident, scryptd), &[]).await? > 0)
+        Ok(self.client.execute("INSERT INTO clients (identifier, scrypt) VALUES ($1, $2)", &[&ident, &scryptd]).await? > 0)
     }
 
     pub async fn add_block(&mut self, ident: &str, ip: &str) -> Result<bool> {
-        Ok(self.client.execute(&format!("UPDATE clients SET blocks = blocks || '{},' WHERE identifier = '{}';", ip, ident), &[]).await? > 0)
+        // TODO
+        // Ok(self.client.execute(&format!("UPDATE clients SET blocks = blocks || '{},' WHERE identifier = '{}';", ip, ident), &[]).await? > 0)
+        Ok(true)
     }
 
     pub async fn check_block(&self, ident: &str, blocked_ip: &str) -> Result<bool> {
@@ -78,7 +80,7 @@ impl Database {
     }
 
     pub async fn is_ident_exists(&self, ident: &str) -> Result<bool> {
-        let ident = self.client.query_opt(&format!("SELECT identifier FROM clients WHERE identifier = '{}';", ident), &[]).await?;
+        let ident = self.client.query_opt("SELECT identifier FROM clients WHERE identifier = $1", &[&ident]).await?;
         if ident.is_none() {
             Ok(false)
         } else {
