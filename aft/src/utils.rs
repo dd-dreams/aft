@@ -263,7 +263,6 @@ pub fn read_sized_buffer(socket: &mut TcpStream, size: usize) -> io::Result<Vec:
     let mut data_len = [0u8; 8];
     socket.read(&mut data_len)?;
     let data_len = usize::from_le_bytes(data_len);
-    println!("max size: {size}. actual size: {data_len}");
     if data_len > size {
         // TODO: send error to socket.
         return Err(error_other!(Errors::BufferTooBig))
@@ -320,7 +319,6 @@ pub fn read_sized_json(socket: &mut TcpStream, keys: &[&str], size: usize) -> io
     let data_json = match json::parse(&data) {
         Ok(json) => json,
         Err(_) => {
-            println!("{}", &data);
             warn!("Stream is not JSON");
             return Err(error_other!(Errors::WrongFormat))
         }
