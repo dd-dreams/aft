@@ -290,6 +290,11 @@ pub fn progress_bar(pos: u8, max: u8) {
     }
 }
 
+pub fn download_speed(bytes_sent: usize) {
+    let mb: f32 = bytes_sent as f32 / 1000000.0;
+    print!("  {:.2}MB/s", mb);
+}
+
 /// Checks JSON format primitively. Meaning it doesn't recurse values, only top ones.
 ///
 /// Returns true when the format is OK, else false.

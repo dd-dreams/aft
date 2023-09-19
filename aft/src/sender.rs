@@ -4,10 +4,11 @@ use std::{io,
     path::Path
 };
 use std::io::{Write, Read};
+use std::time::SystemTime;
 use json;
 use log::{error, warn, info, debug};
 use sha2::{Sha256, Digest};
-use crate::utils::{write_sized_buffer, FileOperations, error_other, progress_bar, Signals, mut_vec};
+use crate::utils::{write_sized_buffer, FileOperations, error_other, progress_bar, Signals, mut_vec, download_speed};
 use crate::errors;
 use crate::constants::{MAX_METADATA_LEN, MAX_CONTENT_LEN, SERVER, CLIENT_SEND, MAX_CHECKSUM_LEN, SIGNAL_LEN};
 use crate::clients::{BaseSocket, Crypto, SWriter};
@@ -259,6 +260,10 @@ where
             update_pb(&mut curr_bars_count, pb_length, self.current_pos);
         }
 
+        let system_time = SystemTime::now();
+        let mut before = 0;
+        let mut bytes_sent_sec = 0;
+
         let mut buffer = vec![0; MAX_CONTENT_LEN];
         loop {
             let read_size = file.read_seek_file_sized(&mut buffer)?;
@@ -266,6 +271,8 @@ where
             if read_size == 0 {
                 break;
             }
+
+            bytes_sent_sec += read_size;
             self.current_pos += read_size as u64;
 
             // It's fine to include the 0's if there are any in `buffer` (only happens on the last
@@ -276,6 +283,20 @@ where
 
             // Progress bar
             update_pb(&mut curr_bars_count, pb_length, self.current_pos);
+
+            match system_time.elapsed() {
+                Ok(elapsed) => {
+                    // update the download speed every 1 second
+                    if elapsed.as_secs() != before {
+                        before = elapsed.as_secs();
+                        download_speed(bytes_sent_sec);
+                        bytes_sent_sec = 0;
+                    }
+                },
+                Err(e) => (error!("An error occurred while printing download speed: {}", e))
+            }
+
+
         }
 
         println!();
