@@ -32,6 +32,7 @@ use aft_crypto::{
 
 
 pub const UNFINISHED_FILE_MSG: &str = "undone";
+const NONCE_TAG_LEN: usize = AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE;
 
 pub type Identifier = String;
 pub type ClientsHashMap = HashMap<Identifier, TcpStream>;
@@ -308,20 +309,19 @@ pub async fn init(mut server: Server) -> io::Result<()> {
 async fn process_proxied(sender: &mut TcpStream, receiver: &mut TcpStream) ->
     io::Result<Signals>
 {
-    // TODO: simplify arrays sizes by using another constant
-    let mut metadata = [0; MAX_METADATA_LEN + AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE];
+    let mut metadata = [0; MAX_METADATA_LEN + NONCE_TAG_LEN];
     sender.read_exact(&mut metadata).await?;
     // Write metadata to receiver
     receiver.write_all(&metadata).await?;
 
     info!("Received a transfer request from {} to {}", sender.peer_addr()?.ip(), receiver.peer_addr()?.ip());
-    let mut file_current_size = [0u8; 8 + AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE];
+    let mut file_current_size = [0u8; 8 + NONCE_TAG_LEN];
     // Read from the receiver the file size
     receiver.read_exact(&mut file_current_size).await?;
     // Send the file size to the sender, so he will know where to start
     sender.write_all(&file_current_size).await?;
 
-    let mut buffer = [0; MAX_CONTENT_LEN + AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE];
+    let mut buffer = [0; MAX_CONTENT_LEN + NONCE_TAG_LEN];
     loop {
         match sender.read_exact(&mut buffer).await {
             Ok(_) => (),
