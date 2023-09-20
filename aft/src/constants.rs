@@ -27,5 +27,4 @@ pub const CLIENT_RECV: u8 = 1;
 pub const SERVER: u8 = 2;
 /// Signal length.
 pub const SIGNAL_LEN: usize = 6;
-/// TEMPORARY. Password length in bytes.
-pub const PASS_LEN: usize = 64;
+pub const SHA_256_LEN: usize = 256;

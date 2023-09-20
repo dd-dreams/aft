@@ -18,11 +18,9 @@ use tokio::io::{AsyncWriteExt, AsyncReadExt};
 use std::{io, net::SocketAddr};
 use crate::utils::{new_ip,
                    bytes_to_string,
-                   error_other,
                    Signals};
 use crate::constants::{MAX_CONTENT_LEN, MAX_METADATA_LEN, MAX_IDENTIFIER_LEN,
-    SERVER, CLIENT_RECV, SIGNAL_LEN, PASS_LEN};
-use crate::errors::Errors;
+    SERVER, CLIENT_RECV, SIGNAL_LEN, SHA_256_LEN};
 use log::{info, error, debug};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -53,20 +51,6 @@ macro_rules! error_connection {
             Ok(v) => v
         }
     };
-}
-
-pub async fn read_sized_buffer(socket: &mut (impl AsyncReadExt + std::marker::Unpin), size: usize) -> Result<Vec::<u8>, io::Error> {
-    // u64, because std::fs::metadata().len() returns u64
-    let data_len = socket.read_u64_le().await? as usize;
-    if data_len > size {
-        // TODO: send error to socket.
-        return Err(error_other!(Errors::BufferTooBig))
-    }
-
-    let mut data = vec![0u8; data_len];
-    socket.read_exact(&mut data).await?;
-
-    Ok(data)
 }
 
 /// Represents a server, which negotiates between clients or client to server.
@@ -155,7 +139,8 @@ impl Server {
     }
 
     async fn read_and_hash_pass(socket: &mut TcpStream, salt: &[u8]) -> io::Result<String> {
-        let mut pass = read_sized_buffer(socket, PASS_LEN).await?;
+        let mut pass = [0; SHA_256_LEN];
+        socket.read(&mut pass).await?;
 
         let pass_phc = match create_hash(&mut pass, Some(salt)) {
             Err(e) => {
@@ -166,6 +151,19 @@ impl Server {
         };
 
         Ok(pass_phc.to_string())
+    }
+
+    async fn read_identifier(socket: &mut TcpStream) -> io::Result<String> {
+        let size = socket.read_u8().await? as usize;
+        if size > MAX_IDENTIFIER_LEN {
+            println!("{size}");
+            println!("too long");
+            return Ok(String::new())
+        }
+        let mut identifier = vec![0; size];
+        socket.read_exact(&mut identifier).await?;
+
+        Ok(bytes_to_string(&identifier))
     }
 
     async fn handle_register(&mut self, socket: &mut TcpStream, identifier: &str, pass_phc: &str) -> io::Result<()> {
@@ -225,10 +223,17 @@ pub async fn init(mut server: Server) -> io::Result<()> {
             // Read what the client wants: download or sending
             let command = error_connection!(socket.read_u8().await, return);
             if command == CLIENT_RECV {
-                let identifier = bytes_to_string(
-                    &error_connection!(read_sized_buffer(&mut socket, MAX_IDENTIFIER_LEN).await, return)
-                    );
+                let identifier = error_connection!(Server::read_identifier(&mut socket).await, return);
+                // TODO: Send an error maybe?
+                if identifier.is_empty() {
+                    return;
+                }
+
                 let pass_phc = error_connection!(Server::read_and_hash_pass(&mut socket, identifier.as_bytes()).await, return);
+                // If the server couldn't hash the password, then return.
+                if pass_phc.is_empty() {
+                    return;
+                }
 
                 if !Server::is_ident_exists(clients.clone(), &identifier).await {
                     let signal = error_connection!(read_signal(&mut socket).await, return);
@@ -273,7 +278,10 @@ pub async fn init(mut server: Server) -> io::Result<()> {
             // The sender
             else {
                 // Read the receiver's identifier
-                let identifier = bytes_to_string(error_connection!(&read_sized_buffer(&mut socket, MAX_IDENTIFIER_LEN).await, return));
+                let identifier = error_connection!(Server::read_identifier(&mut socket).await, return);
+                if identifier.is_empty() {
+                    return;
+                }
 
                 if server.read().await.db.check_block(
                     &identifier, error_connection!(socket.peer_addr(), return).ip().to_string().as_str()).await.expect("Database error.") {
@@ -304,9 +312,9 @@ async fn process_proxied(sender: &mut TcpStream, receiver: &mut TcpStream) ->
 {
     // TODO: simplify arrays sizes by using another constant
     let mut metadata = [0; MAX_METADATA_LEN + AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE];
-    let read_bytes = sender.read(&mut metadata).await?;
+    sender.read_exact(&mut metadata).await?;
     // Write metadata to receiver
-    receiver.write_all(&metadata[..read_bytes]).await?;
+    receiver.write_all(&metadata).await?;
 
     info!("Received a transfer request from {} to {}", sender.peer_addr()?.ip(), receiver.peer_addr()?.ip());
     let mut file_current_size = [0u8; 8 + AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE];

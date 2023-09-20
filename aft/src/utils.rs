@@ -3,12 +3,12 @@
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::SeekFrom;
-use tokio::io::AsyncWriteExt;
 use std::io;
 use std::net::TcpStream;
-use log::{info, warn, debug};
+use log::{info, warn, debug, error};
 use sha2::{Sha256, Digest};
 use crate::errors::Errors;
+use crate::constants::MAX_IDENTIFIER_LEN;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Signals {
@@ -234,47 +234,6 @@ impl FileOperations {
     }
 }
 
-/// Writes data to buffer. It firsts sends to the endpoint the size of incoming data, then writes
-/// the data itself.
-///
-/// Returns when an error occurs with the connection.
-pub fn write_sized_buffer(socket: &mut (impl Write + Read), buffer: &[u8]) -> Result<(), io::Error> {
-    let len_bytes = usize::to_le_bytes(buffer.len());
-    // Writing the length of `buffer`, so the other end knows how much to allocate.
-    socket.write(&len_bytes)?;
-    socket.write_all(buffer)?;
-    Ok(())
-}
-
-/// Like `write_sized_buffer` but async.
-///
-/// Returns when an error occurs with the connection.
-pub async fn write_sized_buffer_async(socket: &mut (impl AsyncWriteExt + std::marker::Unpin), buffer: &[u8]) -> Result<(), io::Error> {
-    let len_bytes = usize::to_le_bytes(buffer.len());
-    // write the size of the upcoming buffer
-    socket.write(&len_bytes).await?;
-    // write buffer
-    socket.write_all(buffer).await?;
-    Ok(())
-}
-
-pub fn read_sized_buffer(socket: &mut TcpStream, size: usize) -> io::Result<Vec::<u8>> {
-    // u64, because std::fs::metadata().len() returns u64
-    let mut data_len = [0u8; 8];
-    socket.read(&mut data_len)?;
-    let data_len = usize::from_le_bytes(data_len);
-    if data_len > size {
-        // TODO: send error to socket.
-        return Err(error_other!(Errors::BufferTooBig))
-    }
-
-    let mut data = vec![0u8; data_len];
-    let read_size = socket.read(&mut data)?;
-    data.truncate(read_size);
-
-    Ok(data)
-}
-
 /// Transforms bytes slice to a string (&str).
 pub fn bytes_to_string(buffer: &[u8]) -> String {
     String::from_utf8_lossy(buffer).to_string()
@@ -318,7 +277,8 @@ pub fn check_json(js: &json::JsonValue, keys: &[&str]) -> bool {
 /// - Connection error.
 /// - The stream format is invalid.
 pub fn read_sized_json(socket: &mut TcpStream, keys: &[&str], size: usize) -> io::Result<json::JsonValue> {
-    let data = read_sized_buffer(socket, size)?;
+    let mut data = vec![0; size];
+    socket.read_exact(&mut data)?;
     let data = bytes_to_string(data.as_slice());
 
     let data_json = match json::parse(&data) {
@@ -348,3 +308,17 @@ pub fn get_accept_input(msg: &str) -> io::Result<char> {
         if ['y', 'b'].contains(&res) {res} else {'n'}
         )
 }
+
+pub fn send_identifier(ident: &[u8], socket: &mut TcpStream) -> io::Result<bool> {
+    if ident.len() > MAX_IDENTIFIER_LEN {
+        error!("Identifier too long.");
+        return Ok(false)
+    }
+    // Write the length of the identifier
+    socket.write(&[ident.len() as u8])?;
+    // Write the identifier of this receiver
+    socket.write(ident)?;
+
+    Ok(true)
+}
+

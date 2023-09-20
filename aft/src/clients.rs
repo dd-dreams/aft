@@ -3,12 +3,11 @@
 use std::net::{TcpStream, TcpListener};
 use std::io::{self, Write, Read};
 use sha2::{Sha256, Digest};
-use crate::utils::{Signals, bytes_to_string, write_sized_buffer, FileOperations, get_accept_input, mut_vec};
+use crate::utils::{Signals, bytes_to_string, FileOperations, get_accept_input, mut_vec, send_identifier};
 use crate::constants::{SIGNAL_LEN, SERVER, CLIENT_RECV,
     MAX_CHECKSUM_LEN, MAX_METADATA_LEN, MAX_CONTENT_LEN};
 use log::{error, info, debug};
 use aft_crypto::{
-    password_encryption::Zeroize,
     exchange::{X25519Key, PublicKey, KEY_LENGTH},
     data::{EncAlgo, EncryptorBase, AeadInPlace, AES_GCM_NONCE_SIZE, AES_GCM_TAG_SIZE},
 };
@@ -145,10 +144,18 @@ where
     ///
     /// Returns a JSON object of the metadata.
     fn read_metadata(&mut self) -> io::Result<json::JsonValue> {
-        let mut metadata = [0; MAX_METADATA_LEN];
-        let bytes_read = self.get_mut_writer().read(&mut metadata)?;
-        let metadata_json = json::parse(&bytes_to_string(&metadata[..bytes_read])).expect("Couldn't convert metadata to JSON.");
+        let mut metadata = vec![0; MAX_METADATA_LEN];
+        self.get_mut_writer().read_ext(&mut metadata)?;
+
+        let metadata_json = json::parse(&{
+                let metadata_string = bytes_to_string(&metadata);
+                match metadata_string.split_once('\0') {
+                    None => metadata_string,
+                    Some(v) => v.0.to_string()
+                }
+            }).expect("Couldn't convert metadata to JSON.");
         log::trace!("{}", metadata_json.pretty(2));
+
         Ok(metadata_json)
     }
 
@@ -315,7 +322,7 @@ where
 
     /// Sends a signal to login.
     fn login(&mut self) -> io::Result<bool> {
-        self.writer.0.write(Signals::Login.as_bytes())?;
+        self.writer.0.write_all(Signals::Login.as_bytes())?;
         Ok(self.read_signal_server()? == Signals::OK)
     }
 
@@ -327,11 +334,14 @@ where
         }
 
         self.writer.0.write(&[CLIENT_RECV])?;
-        // Write the identifier of this receiver
-        write_sized_buffer(&mut self.writer.0, self.ident.as_bytes())?;
+
+        if !send_identifier(self.ident.as_bytes(), &mut self.writer.0)? {
+            return Ok(false)
+        }
+
         // Send the password to the server
-        // TODO: pass should be encrypted
-        write_sized_buffer(&mut self.writer.0, pass.as_bytes())?;
+        let pass_encrypted = {let mut sha = Sha256::new(); sha.update(pass); sha.finalize()};
+        self.writer.0.write_all(&pass_encrypted)?;
 
         if register {
             info!("Requesting to register ...");
@@ -349,8 +359,6 @@ where
             }
             info!("Passed login");
         }
-
-        pass.zeroize();
 
         info!("Waiting for requests ...");
         if self.read_signal_server()? != Signals::StartFt {

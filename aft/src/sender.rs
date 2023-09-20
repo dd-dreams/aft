@@ -8,7 +8,7 @@ use std::time::SystemTime;
 use json;
 use log::{error, warn, info, debug};
 use sha2::{Sha256, Digest};
-use crate::utils::{write_sized_buffer, FileOperations, error_other, progress_bar, Signals, mut_vec, download_speed};
+use crate::utils::{FileOperations, error_other, progress_bar, Signals, mut_vec, download_speed, send_identifier};
 use crate::errors;
 use crate::constants::{MAX_METADATA_LEN, MAX_CONTENT_LEN, SERVER, CLIENT_SEND, MAX_CHECKSUM_LEN, SIGNAL_LEN};
 use crate::clients::{BaseSocket, Crypto, SWriter};
@@ -108,12 +108,13 @@ where
     ///
     /// # Errors
     /// When there is a connection error.
-    fn if_server(&mut self, rece_ident: &str) -> io::Result<()> {
+    fn if_server(&mut self, rece_ident: &str) -> io::Result<bool> {
         // Notify the server that this sender is sending data
         self.writer.0.write(&[CLIENT_SEND])?;
-        // The receiver identifier
-        write_sized_buffer(&mut self.writer.0, rece_ident.as_bytes())?;
-        Ok(())
+        if !send_identifier(rece_ident.as_bytes(), &mut self.writer.0)? {
+            return Ok(false)
+        }
+        Ok(true)
     }
 
     fn get_starting_pos(&mut self) -> io::Result<()> {
@@ -178,7 +179,9 @@ where
         if server_or_receiver[0] == SERVER {
             debug!("Connected to a server");
             if let Some(ident) = receiver_identifier {
-                self.if_server(ident)?;
+                if !self.if_server(ident)? {
+                    return Ok(false);
+                }
                 // Read signal
                 match self.read_signal_server()? {
                     Signals::StartFt => (),
@@ -233,12 +236,14 @@ where
             return Err(error_other!(errors::Errors::BufferTooBig));
         }
 
-        // TODO: turn this vector into a static sized vector
-        let mut metadata_vec_bytes = parsed.dump().as_bytes().to_vec();
+        let dump = parsed.dump();
+        let metadata_vec_bytes = dump.as_bytes();
+        let mut full_metadata = vec![0; MAX_METADATA_LEN];
+        full_metadata[..metadata_vec_bytes.len()].copy_from_slice(&metadata_vec_bytes);
 
         // Write metadata
         debug!("Sending metadata");
-        self.writer.write_ext(&mut metadata_vec_bytes)?;
+        self.writer.write_ext(&mut full_metadata)?;
 
         self.get_starting_pos()?;
         Ok(true)
