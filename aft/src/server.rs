@@ -156,8 +156,6 @@ impl Server {
     async fn read_identifier(socket: &mut TcpStream) -> io::Result<String> {
         let size = socket.read_u8().await? as usize;
         if size > MAX_IDENTIFIER_LEN {
-            println!("{size}");
-            println!("too long");
             return Ok(String::new())
         }
         let mut identifier = vec![0; size];
