@@ -293,10 +293,8 @@ where
                         bytes_sent_sec = 0;
                     }
                 },
-                Err(e) => (error!("An error occurred while printing download speed: {}", e))
+                Err(e) => error!("An error occurred while printing download speed: {}", e)
             }
-
-
         }
 
         println!();
