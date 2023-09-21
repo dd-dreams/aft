@@ -38,6 +38,7 @@ Options:
     -p --port PORT              Port to host the server on.
     -i --identifier IDENTIFIER  Identifier to find the receiver. Used only when its not P2P.
     -v --verbose VERBOSE        Verbose level. Default is 1 (warnings only). Range 1-3.
+    -c --config CONFIG          Config location.
     -r --register REGISTER      Register.
 ```
 
