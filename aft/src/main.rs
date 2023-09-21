@@ -38,6 +38,7 @@ const OPTIONS_MSG: &str = "Options:
     -p --port PORT              Port to host the server on.
     -i --identifier IDENTIFIER  Identifier to find the receiver. Used only when its not P2P.
     -v --verbose VERBOSE        Verbose level. Default is 1 (warnings only). Range 1-3.
+    -c --config CONFIG          Config location.
     -r --register REGISTER      Register.";
 
 struct CliArgs<'a> {
@@ -130,7 +131,7 @@ async fn main() {
         return;
     }
 
-    let config = Config::new(&format!("{}/../.config", env!("CARGO_MANIFEST_DIR"))).unwrap_or_default();
+    let mut config = Config::new(&format!("{}/../.config", env!("CARGO_MANIFEST_DIR"))).unwrap_or_default();
     let mut verbose_mode = config.get_verbose();
 
     let mut cliargs = CliArgs::new(config.get_mode());
@@ -188,6 +189,11 @@ async fn main() {
             }
             cliargs.register = true;
             index -= 1;
+        } else if ["--config", "-c"].contains(&arg.to_lowercase().as_str()) {
+            config = match Config::new(&args[index+1]) {
+                Ok(v) => v,
+                Err(_) => {println!("Invalid config location"); return;}
+            }
         } else if index+1 == args.len() {
             if !cliargs.set_filename(&args[index]) {
                 println!("A filename is only passed when using sender mode");
