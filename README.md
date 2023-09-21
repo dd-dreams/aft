@@ -1,6 +1,6 @@
 # <p align="center">aft<br>advanced file transferring program<br>![GitHub repo size](https://img.shields.io/github/repo-size/dd-dreams/aft)</p>
 
-aft (Advanaced File Transfer) is a minimal and secure tool for sharing files between two parties easily and efficiently. Works in Windows, Linux and macOS.
+aft (Advanced File Transfer) is a minimal and secure tool for sharing files between two parties easily and efficiently. Works in Windows, Linux and macOS.
 
 This program is currently in beta stage.
 
