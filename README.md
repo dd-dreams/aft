@@ -11,6 +11,7 @@ This program is currently in beta stage.
 - Security is top priority.
 - Peer to Peer mode.
 - Middle server mode.
+- Blocking senders.
 
 # Modes
 There are a few modes to use with this program:
