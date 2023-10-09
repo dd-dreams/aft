@@ -41,9 +41,8 @@ pub type MovT<T> = Arc<RwLock<T>>;
 
 macro_rules! error_connection {
     ($comm:expr) => {
-        match $comm {
-            Err(e) => {error!("Error in connection: {:?}", e); continue;},
-            Ok(v) => v
+        if let Err(e) = $comm {
+            error!("Error in connection: {:?}", e);
         }
     };
     ($comm:expr, $err_comm:expr) => {
