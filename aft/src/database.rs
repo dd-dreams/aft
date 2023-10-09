@@ -1,6 +1,6 @@
 //! Database implementation using PostgreSQL.
 use tokio_postgres::{NoTls, Client};
-use log::error;
+use log::{error, trace};
 use crate::constants::{MAX_IDENTIFIER_LEN, MAX_BLOCKS_LEN};
 use tokio;
 use aft_crypto::password_encryption::PHC_STR_LEN;
@@ -32,11 +32,11 @@ impl Database {
     }
 
     /// Creates a new table in the following template:
-    /// +------------+-------------+
-    /// | Identifier | Scrypt Data |
-    /// +------------+-------------+
-    /// | IDENTIFIER | SCRYPT DATA |
-    /// +------------+-------------+
+    /// +------------+-------------+---------------+
+    /// | Identifier | Scrypt Data | Blocked users |
+    /// +------------+-------------+---------------+
+    /// | IDENTIFIER | SCRYPT DATA | BLOCKED USERS |
+    /// +------------+-------------+---------------+
     pub async fn create_table(&mut self) -> Result<()> {
         match self.client.execute(&format!("CREATE TABLE IF NOT EXISTS clients (
             identifier varchar({}),
@@ -51,6 +51,7 @@ impl Database {
 
     /// Fetches scrypt data by an identifier.
     pub async fn get_scryptd_ident(&self, ident: &str) -> Result<String> {
+        trace!("DB: {} wants scrypt data", ident);
         let row_ident = self.client.query_one("SELECT scrypt FROM clients WHERE identifier = $1", &[&ident]).await?;
         row_ident.try_get(0)
     }
@@ -60,13 +61,13 @@ impl Database {
     }
 
     pub async fn add_block(&mut self, ident: &str, ip: &str) -> Result<bool> {
-        // TODO
-        // Ok(self.client.execute(&format!("UPDATE clients SET blocks = blocks || '{},' WHERE identifier = '{}';", ip, ident), &[]).await? > 0)
-        Ok(true)
+        trace!("DB: {} blocks {}", ident, ip);
+        Ok(self.client.execute("UPDATE clients SET blocks = COALESCE(blocks, '') || $1 || ',' WHERE identifier = $2;", &[&ip, &ident]).await? > 0)
     }
 
     pub async fn check_block(&self, ident: &str, blocked_ip: &str) -> Result<bool> {
-        let row_ident = self.client.query_one(&format!("SELECT blocks FROM clients WHERE identifier = '{}';", ident), &[]).await?;
+        trace!("DB: {} checks if {} is blocked", ident, blocked_ip);
+        let row_ident = self.client.query_one("SELECT blocks FROM clients WHERE identifier = $1;", &[&ident]).await?;
         let blocks: &str = row_ident.try_get(0).unwrap_or_default();
         if !blocks.is_empty() {
             for block in blocks.split(',') {
