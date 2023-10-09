@@ -108,13 +108,15 @@ where
     ///
     /// # Errors
     /// When there is a connection error.
-    fn if_server(&mut self, rece_ident: &str) -> io::Result<bool> {
+    ///
+    /// Returns false when the identifier is too long.
+    fn if_server(&mut self, rece_ident: &str, sen_ident: &str) -> io::Result<bool> {
         // Notify the server that this sender is sending data
         self.writer.0.write(&[CLIENT_SEND])?;
-        if !send_identifier(rece_ident.as_bytes(), &mut self.writer.0)? {
-            return Ok(false)
-        }
-        Ok(true)
+        // Write the receiver's identifier
+        Ok(send_identifier(rece_ident.as_bytes(), &mut self.writer.0)?
+            // Write the sender's identifier
+            && send_identifier(sen_ident.as_bytes(), &mut self.writer.0)?)
     }
 
     fn get_starting_pos(&mut self) -> io::Result<()> {
@@ -165,7 +167,11 @@ where
     ///     - File size.
     ///     - Modified date.
     ///     - Identifier of the sender.
-    pub fn init_send(&mut self, path: &str, receiver_identifier: Option<&str>, pass: &str) -> io::Result<bool> {
+    ///
+    ///
+    /// Returns false if something went wrong (such as the identifier is too long, or when the
+    /// receiver isn't online).
+    pub fn init_send(&mut self, path: &str, sen_ident: &str, receiver_identifier: Option<&str>, pass: &str) -> io::Result<bool> {
         let file_path = Path::new(path);
 
         if !basic_file_checks(file_path)? {
@@ -179,12 +185,13 @@ where
         if server_or_receiver[0] == SERVER {
             debug!("Connected to a server");
             if let Some(ident) = receiver_identifier {
-                if !self.if_server(ident)? {
+                // If the identifier is too long
+                if !self.if_server(ident, sen_ident)? {
                     return Ok(false);
                 }
                 // Read signal
                 match self.read_signal_server()? {
-                    Signals::StartFt => (),
+                    Signals::OK => (),
                     Signals::Error => {
                         error!("Receiver is not online.");
                         return Ok(false)
@@ -198,8 +205,8 @@ where
                 return Err(error_other!(errors::Errors::NoReceiverIdentifier))
             }
 
-            // Write to the endpoint to start the transfer
             debug!("Signaling to start");
+            // Write to the endpoint to start the transfer
             self.signal_start()?;
 
             match self.read_signal_server()? {

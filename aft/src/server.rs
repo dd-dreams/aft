@@ -91,22 +91,22 @@ impl Server {
         Ok(())
     }
 
-    async fn handle_sender(sender: &mut TcpStream, clients: MovT<ClientsHashMap>, identifier: &str) ->
+    async fn handle_sender(sender: &mut TcpStream, clients: MovT<ClientsHashMap>, recv_identifier: &str, sen_identifier: &str) ->
         io::Result<StatusSender>
     {
         let mut receiver: TcpStream;
         {
             // If the receiver is not online
-            if !Self::is_ident_exists(clients.clone(), identifier).await {
-                info!("{} is not online", identifier);
+            if !Self::is_ident_exists(clients.clone(), recv_identifier).await {
+                info!("{} is not online", recv_identifier);
                 sender.write(Signals::Error.as_bytes()).await?;
                 return Ok(StatusSender::Null)
             } else {
                 // Write to start the transfer
-                sender.write(Signals::StartFt.as_bytes()).await?;
+                sender.write(Signals::OK.as_bytes()).await?;
             }
 
-            receiver = clients.write().await.remove(identifier).unwrap();
+            receiver = clients.write().await.remove(recv_identifier).unwrap();
         }
 
         // Read signal from the sender
@@ -286,7 +286,9 @@ pub async fn init(mut server: Server) -> io::Result<()> {
             else {
                 // Read the receiver's identifier
                 let recv_identifier = error_connection!(Server::read_identifier(&mut socket).await, return);
-                if recv_identifier.is_empty() {
+                // Read the sender's identifier
+                let sen_identifier = error_connection!(Server::read_identifier(&mut socket).await, return);
+                if recv_identifier.is_empty() || sen_identifier.is_empty() {
                     return;
                 }
 
@@ -297,7 +299,8 @@ pub async fn init(mut server: Server) -> io::Result<()> {
                     return;
                 }
 
-                let status = error_connection!(Server::handle_sender(&mut socket, clients, &recv_identifier).await, return);
+
+                let status = error_connection!(Server::handle_sender(&mut socket, clients, &recv_identifier, &sen_identifier).await, return);
                 if let StatusSender::Blocked = status {
                     server.write().await.db.add_block(
                         &recv_identifier,

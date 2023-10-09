@@ -256,7 +256,7 @@ async fn main() {
             &format!("{}:{}", cliargs.address.expect("No address specified."), cliargs.port),
             config.get_identifier().expect("No identifier set.").clone(), create_128_encryptor);
 
-        if !c.init_send(cliargs.filename, cliargs.identifier, &pass).unwrap() {
+        if !c.init_send(cliargs.filename, config.get_identifier().expect("Identifier isn't present"), cliargs.identifier, &pass).unwrap() {
             return;
         }
 

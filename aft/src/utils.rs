@@ -309,6 +309,9 @@ pub fn get_accept_input(msg: &str) -> io::Result<char> {
         )
 }
 
+/// Sends an identifier through a socket.
+///
+/// Returns false if the identifier is too long.
 pub fn send_identifier(ident: &[u8], socket: &mut TcpStream) -> io::Result<bool> {
     if ident.len() > MAX_IDENTIFIER_LEN {
         error!("Identifier too long.");
@@ -321,4 +324,3 @@ pub fn send_identifier(ident: &[u8], socket: &mut TcpStream) -> io::Result<bool>
 
     Ok(true)
 }
-
