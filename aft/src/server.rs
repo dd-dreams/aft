@@ -53,6 +53,12 @@ macro_rules! error_connection {
     };
 }
 
+enum StatusSender {
+    Null,
+    Blocked,
+    Rejected
+}
+
 /// Represents a server, which negotiates between clients or client to server.
 pub struct Server {
     address: SocketAddr,
@@ -86,7 +92,7 @@ impl Server {
     }
 
     async fn handle_sender(sender: &mut TcpStream, clients: MovT<ClientsHashMap>, identifier: &str) ->
-        io::Result<String>
+        io::Result<StatusSender>
     {
         let mut receiver: TcpStream;
         {
@@ -94,7 +100,7 @@ impl Server {
             if !Self::is_ident_exists(clients.clone(), identifier).await {
                 info!("{} is not online", identifier);
                 sender.write(Signals::Error.as_bytes()).await?;
-                return Ok("".to_string())
+                return Ok(StatusSender::Null)
             } else {
                 // Write to start the transfer
                 sender.write(Signals::StartFt.as_bytes()).await?;
@@ -108,18 +114,21 @@ impl Server {
         receiver.write(signal.as_bytes()).await?;
 
         let acceptance = read_signal(&mut receiver).await?;
+
+        // Write to sender if the receiver accepted the file transfer
         sender.write(acceptance.as_bytes()).await?;
-        // Receiver blocked this sender.
-        if acceptance == Signals::Other {
-            return Ok(identifier.to_string());
+
+        match acceptance {
+            Signals::Error => return Ok(StatusSender::Rejected),
+            Signals::Other => return Ok(StatusSender::Blocked),
+            _ => ()
         }
 
         Server::read_both_pks(sender, &mut receiver).await?;
 
         process_proxied(sender, &mut receiver).await?;
 
-        // TODO
-        Ok("".to_string())
+        Ok(StatusSender::Null)
     }
 
     async fn is_registered_db(&self, identifier: &str) -> bool {
@@ -273,24 +282,25 @@ pub async fn init(mut server: Server) -> io::Result<()> {
                     hashmap_writable.insert(identifier, socket);
                 }
             }
-            // The sender
+            // The sender (socket = sender)
             else {
                 // Read the receiver's identifier
-                let identifier = error_connection!(Server::read_identifier(&mut socket).await, return);
-                if identifier.is_empty() {
+                let recv_identifier = error_connection!(Server::read_identifier(&mut socket).await, return);
+                if recv_identifier.is_empty() {
                     return;
                 }
 
                 if server.read().await.db.check_block(
-                    &identifier, error_connection!(socket.peer_addr(), return).ip().to_string().as_str()).await.expect("Database error.") {
+                    &recv_identifier, &error_connection!(socket.peer_addr(), return).ip().to_string()).await.expect("Database error.") {
+                    // Signaling to the sender that he is blocked
                     error_connection!(socket.write(Signals::Error.as_bytes()).await, return);
                     return;
                 }
 
-                let res = error_connection!(Server::handle_sender(&mut socket, clients, &identifier).await, return);
-                if !res.is_empty() {
+                let status = error_connection!(Server::handle_sender(&mut socket, clients, &recv_identifier).await, return);
+                if let StatusSender::Blocked = status {
                     server.write().await.db.add_block(
-                        &res,
+                        &recv_identifier,
                         error_connection!(socket.peer_addr(), return).ip().to_string().as_str()
                         ).await.expect("Database error.");
                 }

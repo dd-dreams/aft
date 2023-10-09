@@ -203,10 +203,9 @@ where
             self.signal_start()?;
 
             match self.read_signal_server()? {
-                Signals::OK => (),
-                Signals::Error => {error!("Receiver did not accept the request."); return Ok(false)},
-                Signals::Other => {error!("Receiver blocked you."); return Ok(false)},
-                _ => ()
+                Signals::OK => info!("Reciever accepted."),
+                Signals::Error => {error!("Receiver rejected."); return Ok(false)},
+                s => {error!("Received invalid signal: {}", s); return Ok(false)}
             }
 
             self.shared_secret()?;
