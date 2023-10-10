@@ -119,9 +119,17 @@ impl Server {
         sender.write(acceptance.as_bytes()).await?;
 
         match acceptance {
-            Signals::Error => return Ok(StatusSender::Rejected),
-            Signals::Other => return Ok(StatusSender::Blocked),
-            _ => ()
+            Signals::Error => {
+                // Keep the receiver listening
+                clients.write().await.insert(recv_identifier.to_string(), receiver);
+                return Ok(StatusSender::Rejected)
+            },
+            Signals::Other => {
+                clients.write().await.insert(recv_identifier.to_string(), receiver);
+                return Ok(StatusSender::Blocked)
+            },
+            Signals::OK => (),
+            s => {error!("Invalid signal: {}", s); return Ok(StatusSender::Null)}
         }
 
         Server::read_both_pks(sender, &mut receiver).await?;
@@ -298,7 +306,6 @@ pub async fn init(mut server: Server) -> io::Result<()> {
                     error_connection!(socket.write(Signals::Error.as_bytes()).await, return);
                     return;
                 }
-
 
                 let status = error_connection!(Server::handle_sender(&mut socket, clients, &recv_identifier, &sen_identifier).await, return);
                 if let StatusSender::Blocked = status {

@@ -360,20 +360,23 @@ where
             info!("Passed login");
         }
 
-        info!("Waiting for requests ...");
-        if self.read_signal_server()? != Signals::StartFt {
-            error!("Invalid signal.");
-            return Ok(false)
+
+        loop {
+            info!("Waiting for requests ...");
+            if self.read_signal_server()? != Signals::StartFt {
+                error!("Invalid signal.");
+                return Ok(false)
+            }
+            match get_accept_input("Someone wants to send you a file (y/n/b): ")? {
+                'y' => break,
+                'n' => self.writer.0.write(Signals::Error.as_bytes())?,
+                'b' => self.writer.0.write(Signals::Other.as_bytes())?,
+                _ => panic!("Invalid input.")
+            };
         }
 
-        match get_accept_input("Someone wants to send you a file (y/n/b): ")? {
-            'y' => self.writer.0.write(Signals::OK.as_bytes())?,
-            'n' => {self.writer.0.write(Signals::Error.as_bytes())?;
-                return Ok(false)},
-            'b' => {self.writer.0.write(Signals::Other.as_bytes())?;
-                return Ok(false)},
-            _ => panic!("Invalid input.")
-        };
+        // Write that the receiver accepts the request
+        self.writer.0.write(Signals::OK.as_bytes())?;
 
         self.shared_secret()?;
 

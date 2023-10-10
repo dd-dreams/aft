@@ -298,12 +298,12 @@ pub fn read_sized_json(socket: &mut TcpStream, keys: &[&str], size: usize) -> io
 }
 
 pub fn get_accept_input(msg: &str) -> io::Result<char> {
-    let mut input = [0; 1];
+    let mut input = String::new();
     print!("{}", msg);
     io::stdout().flush()?;
-    io::stdin().read_exact(&mut input)?;
+    io::stdin().read_line(&mut input)?;
 
-    let res = input[0] as char;
+    let res = input.chars().next().unwrap_or_default();
     Ok(
         if ['y', 'b'].contains(&res) {res} else {'n'}
         )
