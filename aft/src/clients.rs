@@ -177,7 +177,7 @@ where
             file.write(&content)?;
         }
 
-        // Returns the sender's checksum.
+        // Returns the sender's checksum
         Ok(content[SIGNAL_LEN..MAX_CHECKSUM_LEN+SIGNAL_LEN].to_vec())
     }
 

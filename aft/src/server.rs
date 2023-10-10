@@ -102,7 +102,7 @@ impl Server {
                 sender.write(Signals::Error.as_bytes()).await?;
                 return Ok(StatusSender::Null)
             } else {
-                // Write to start the transfer
+                // The receiver is online
                 sender.write(Signals::OK.as_bytes()).await?;
             }
 
