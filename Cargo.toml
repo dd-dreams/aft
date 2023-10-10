@@ -3,3 +3,4 @@ members = [
     "aft",
     "aft-crypto"
 ]
+resolver = "2"
