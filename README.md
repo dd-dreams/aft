@@ -42,6 +42,3 @@ Options:
     -c --config CONFIG          Config location.
     -r --register REGISTER      Register.
 ```
-
-# Security
-Currently the highest priority of the maintainers is security. If you find any security issue please send an email at: 80887265+dd-dreams@users.noreply.github.com.
