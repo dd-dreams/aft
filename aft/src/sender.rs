@@ -131,10 +131,10 @@ where
     }
 
     pub fn auth(&mut self, pass: &str) -> io::Result<bool> {
-        let pass_encrypted = {let mut sha = Sha256::new(); sha.update(pass); sha.finalize()};
+        let pass_hashed = {let mut sha = Sha256::new(); sha.update(pass); sha.finalize()};
 
         debug!("Authenticating ...");
-        self.writer.write_ext(mut_vec!(pass_encrypted))?;
+        self.writer.write_ext(mut_vec!(pass_hashed))?;
 
         Ok(self.read_signal()? == Signals::OK)
     }
@@ -310,7 +310,7 @@ where
 
         println!();
         debug!("Reached EOF");
-        debug!("Writing checksum");
+        debug!("Ending file transfer and writing checksum");
         buffer[..SIGNAL_LEN].copy_from_slice(Signals::EndFt.as_bytes());
         buffer[SIGNAL_LEN..MAX_CHECKSUM_LEN+SIGNAL_LEN].copy_from_slice(&file.checksum());
         self.writer.write_ext(&mut buffer)?;

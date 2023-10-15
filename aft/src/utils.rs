@@ -5,9 +5,8 @@ use std::io::prelude::*;
 use std::io::SeekFrom;
 use std::io;
 use std::net::TcpStream;
-use log::{info, warn, debug, error};
+use log::{info, debug, error};
 use sha2::{Sha256, Digest};
-use crate::errors::Errors;
 use crate::constants::MAX_IDENTIFIER_LEN;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -187,10 +186,12 @@ impl FileOperations {
         Ok(())
     }
 
+    /// Seeks to the start + pos.
     pub fn seek_start(&mut self, pos: u64) -> io::Result<u64> {
         self.file.seek(SeekFrom::Start(pos))
     }
 
+    /// Seeks to the end - pos.
     pub fn seek_end(&mut self, pos: i64) -> io::Result<u64> {
         self.file.seek(SeekFrom::End(pos))
     }
@@ -200,26 +201,32 @@ impl FileOperations {
         self.file.stream_position()
     }
 
+    /// Returns the length of the file.
     pub fn len(&self) -> io::Result<u64> {
         Ok(self.file.metadata()?.len())
     }
 
+    /// Returns whether the file is empty.
     pub fn is_empty(&self) -> io::Result<bool> {
         Ok(self.len()? == 0)
     }
 
+    /// Checks if a file exists.
     pub fn is_file_exists(path: &str) -> bool {
         std::path::Path::new(path).is_file()
     }
 
+    /// Returns the current checksum of the file.
     pub fn checksum(&self) -> Vec<u8> {
         self.hasher.clone().finalize().to_vec()
     }
 
+    /// Updates the checksum.
     pub fn update_checksum(&mut self, buffer: &[u8]) {
         self.hasher.update(&buffer);
     }
 
+    /// Resets the checksum.
     pub fn reset_checksum(&mut self) {
         self.hasher.reset();
     }
@@ -229,6 +236,7 @@ impl FileOperations {
         fs::remove_file(path)
     }
 
+    /// Rename `filename` to `new_filename`.
     pub fn rename(filename: &str, new_filename: &str) -> io::Result<()> {
         fs::rename(filename, new_filename)
     }
@@ -239,6 +247,7 @@ pub fn bytes_to_string(buffer: &[u8]) -> String {
     String::from_utf8_lossy(buffer).to_string()
 }
 
+/// Prints a progress bar.
 pub fn progress_bar(pos: u8, max: u8) {
     io::stdout().flush().unwrap();
     if pos == max {
@@ -249,52 +258,10 @@ pub fn progress_bar(pos: u8, max: u8) {
     }
 }
 
+/// Adds to the progress bar a download speed.
 pub fn download_speed(bytes_sent: usize) {
     let mb: f32 = bytes_sent as f32 / 1000000.0;
     print!("  {:.2}MB/s", mb);
-}
-
-/// Checks JSON format primitively. Meaning it doesn't recurse values, only top ones.
-///
-/// Returns true when the format is OK, else false.
-pub fn check_json(js: &json::JsonValue, keys: &[&str]) -> bool {
-    if js.is_empty() {
-        return false;
-    }
-
-    for key in keys {
-        if !js.has_key(key) {
-            return false;
-        }
-    }
-    true
-}
-
-/// Reads JSON from socket stream.
-/// It uses `keys` to check the validity of the stream (if it contains the key(s) from `keys`).
-///
-/// Returns error if:
-/// - Connection error.
-/// - The stream format is invalid.
-pub fn read_sized_json(socket: &mut TcpStream, keys: &[&str], size: usize) -> io::Result<json::JsonValue> {
-    let mut data = vec![0; size];
-    socket.read_exact(&mut data)?;
-    let data = bytes_to_string(data.as_slice());
-
-    let data_json = match json::parse(&data) {
-        Ok(json) => json,
-        Err(_) => {
-            warn!("Stream is not JSON");
-            return Err(error_other!(Errors::WrongFormat))
-        }
-    };
-
-    if !data_json.has_key("signal") && !check_json(&data_json, keys) {
-        warn!("Invalid JSON format");
-        return Err(error_other!(Errors::WrongFormat))
-    }
-
-    Ok(data_json)
 }
 
 pub fn get_accept_input(msg: &str) -> io::Result<char> {

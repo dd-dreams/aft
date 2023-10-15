@@ -148,12 +148,14 @@ where
         self.get_mut_writer().read_ext(&mut metadata)?;
 
         let metadata_json = json::parse(&{
-                let metadata_string = bytes_to_string(&metadata);
-                match metadata_string.split_once('\0') {
-                    None => metadata_string,
-                    Some(v) => v.0.to_string()
-                }
-            }).expect("Couldn't convert metadata to JSON.");
+            let metadata_string = bytes_to_string(&metadata);
+            // Reading the metadata is a fixed size, and len(metadata) <= MAX_METADATA_LEN, so we
+            // need to handle when `metadata` isn't full.
+            match metadata_string.split_once('\0') {
+                None => metadata_string,
+                Some(v) => v.0.to_string()
+            }
+        }).expect("Couldn't convert metadata buffer to JSON.");
         log::trace!("{}", metadata_json.pretty(2));
 
         Ok(metadata_json)
@@ -220,12 +222,12 @@ where
 
         let filename = metadata["metadata"]["filename"].as_str().unwrap_or("null");
 
-        let checksum = self.read_write_data(&mut file, sizeb)?;
-        if !self.check_checksum(&checksum, &file.checksum()) {
-            if get_accept_input("Keep the file? ").expect("Couldn't read answer") != 'y' {
-                FileOperations::rm(&format!(".{}.tmp", filename))?;
-                return Ok(false)
-            }
+        let recv_checksum = self.read_write_data(&mut file, sizeb)?;
+        // If the checksum isn't good
+        if !self.check_checksum(&recv_checksum, &file.checksum())
+            && get_accept_input("Keep the file? ").expect("Couldn't read answer") != 'y' {
+            FileOperations::rm(&format!(".{}.tmp", filename))?;
+            return Ok(false)
         }
 
         FileOperations::rename(&format!(".{}.tmp", filename), filename)?;
@@ -297,6 +299,7 @@ impl<T> Downloader<T>
 where
     T: AeadInPlace
 {
+    /// Constructor. Connects to `remote_ip` automatically.
     pub fn new(remote_ip: &str, ident: String, encryptor_func: fn(&[u8]) -> T) -> Self {
         let socket = TcpStream::connect(remote_ip).expect("Couldn't connect.");
         Downloader { ident,
@@ -340,8 +343,8 @@ where
         }
 
         // Send the password to the server
-        let pass_encrypted = {let mut sha = Sha256::new(); sha.update(pass); sha.finalize()};
-        self.writer.0.write_all(&pass_encrypted)?;
+        let pass_hashed = {let mut sha = Sha256::new(); sha.update(pass); sha.finalize()};
+        self.writer.0.write_all(&pass_hashed)?;
 
         if register {
             info!("Requesting to register ...");
@@ -360,7 +363,6 @@ where
             info!("Passed login");
         }
 
-
         loop {
             info!("Waiting for requests ...");
             if self.read_signal_server()? != Signals::StartFt {
@@ -378,6 +380,7 @@ where
         // Write that the receiver accepts the request
         self.writer.0.write(Signals::OK.as_bytes())?;
 
+        // Exchange secret key with the sender
         self.shared_secret()?;
 
         if !self.download()? {
@@ -435,6 +438,7 @@ impl<T> Receiver<T>
 where
     T: AeadInPlace
 {
+    /// Constructor. Creates a listener on `addr` automatically.
     pub fn new(addr: &str, encryptor_func: fn(&[u8]) -> T) -> Self {
         let listener = TcpListener::bind(addr).expect("Couldn't bind to address");
         let (socket, _) = listener.accept().expect("Couldn't accept connection");
