@@ -223,7 +223,7 @@ impl FileOperations {
 
     /// Updates the checksum.
     pub fn update_checksum(&mut self, buffer: &[u8]) {
-        self.hasher.update(&buffer);
+        self.hasher.update(buffer);
     }
 
     /// Resets the checksum.

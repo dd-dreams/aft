@@ -245,7 +245,7 @@ where
         let dump = parsed.dump();
         let metadata_vec_bytes = dump.as_bytes();
         let mut full_metadata = vec![0; MAX_METADATA_LEN];
-        full_metadata[..metadata_vec_bytes.len()].copy_from_slice(&metadata_vec_bytes);
+        full_metadata[..metadata_vec_bytes.len()].copy_from_slice(metadata_vec_bytes);
 
         // Write metadata
         debug!("Sending metadata");
