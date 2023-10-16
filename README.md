@@ -12,6 +12,7 @@ This program is currently in beta stage.
 - Peer to Peer mode.
 - Middle server mode.
 - Blocking senders.
+- No IP lookup.
 
 # Modes
 There are a few modes to use with this program:
@@ -28,7 +29,7 @@ Allows using a middle server instead of two devices connecting to each other dir
 aft - file transfer done easily
 
 Usage:
-    aft --mode sender --address <address> [--port <port>] <filename>
+    aft --mode sender [--address <address>] [--port <port>] <filename>
     aft -m receiver [-p <port>]
     aft -m download -a <address> [-p <port>]
     aft -m server [-p <port>]

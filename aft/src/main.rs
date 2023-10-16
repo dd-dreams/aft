@@ -29,7 +29,7 @@ pub const SERVER_MODE: u8 = 4;
 pub const DEFAULT_PORT: u16 = 1122;
 const HELP_MSG: &str = "aft - file transfer done easily";
 const USAGE_MSG: &str = "Usage:
-    aft --mode sender --address <address> [--port <port>] <filename>
+    aft --mode sender [--address <address>] [--port <port>] <filename>
     aft -m receiver [-p <port>]
     aft -m download -a <address> [-p <port>]
     aft -m server [-p <port>]";
