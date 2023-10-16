@@ -4,7 +4,7 @@ use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::SeekFrom;
 use std::io;
-use std::net::TcpStream;
+use std::net::{TcpStream, Ipv4Addr};
 use log::{info, debug, error};
 use sha2::{Sha256, Digest};
 use crate::constants::MAX_IDENTIFIER_LEN;
@@ -296,4 +296,23 @@ pub fn send_identifier(ident: &[u8], socket: &mut TcpStream) -> io::Result<bool>
     socket.write(ident)?;
 
     Ok(true)
+}
+
+pub fn get_pub_ip() -> io::Result<String> {
+    let mut stream = TcpStream::connect("ifconfig.me:80")?;
+    let request = "GET / HTTP/1.0\r\nHost: ifconfig.me\r\nAccept: */*\r\n\r\n".as_bytes();
+
+    stream.write_all(request)?;
+
+    let mut response = String::new();
+    stream.read_to_string(&mut response)?;
+
+    let addr = response.trim().split('\n').last().unwrap_or("Couldn't extract IP").to_string();
+
+    Ok(addr)
+}
+
+pub fn ip_to_octets(ip_str: &str) -> [u8; 4] {
+    let ip: Ipv4Addr = ip_str.parse().expect("IP format is incorrect.");
+    ip.octets()
 }

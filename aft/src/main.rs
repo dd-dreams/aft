@@ -19,7 +19,8 @@ use env_logger::{self, fmt::Color};
 use log::{debug, error, Level};
 use config::Config;
 use std::env;
-use aft_crypto::data::{Aes128Gcm, create_128_encryptor};
+use aft_crypto::{data::{Aes128Gcm, create_128_encryptor},
+                 bip39};
 
 pub const SENDER_MODE: u8 = 1;
 pub const RECEIVER_MODE: u8 = 2;
@@ -120,6 +121,51 @@ fn build_logger(level: &str) {
             writeln!(buf, "[{} {}] {}", buf.timestamp(), style.value(record.level()), record.args())
         })
         .init();
+}
+
+/// Generates code-phrase from an IP address. This only supports IPv4 addresses.
+///
+/// Returns the code-phrase.
+fn generate_code_from_pub_ip() -> String {
+    let pub_ip = utils::get_pub_ip().expect("Couldn't get public IP address");
+    let octets = utils::ip_to_octets(&pub_ip).map(|octet| octet as usize);
+    // An octet maximum size is 256
+    let wordlist = &bip39::create_wordlist()[..=255];
+
+    let mut codes = String::new();
+
+    for octet in octets {
+        codes.push_str(wordlist[octet]);
+        codes.push('-');
+    }
+
+    // Remove the last dash
+    codes.pop();
+
+    codes
+}
+
+/// Gets the IP from a generates code-phrase. Only supports IPv4 addresses.
+/// Basically the reversed edition of `generate_code_from_pub_ip`.
+///
+/// Returns the IP.
+fn get_ip_from_code(codes: &str) -> String {
+    let wordlist = &bip39::create_wordlist()[..=255];
+
+    let mut pub_ip = String::new();
+
+    for code in codes.split('-') {
+        for i in 0..wordlist.len() {
+            if wordlist[i] == code {
+                pub_ip.push_str(&i.to_string());
+                pub_ip.push('.');
+            }
+        }
+    }
+
+    pub_ip.pop();
+
+    pub_ip
 }
 
 /// Main CLI function.
@@ -228,6 +274,7 @@ async fn main() {
     }
     else if cliargs.mode == RECEIVER_MODE {
         let pass = rpassword::prompt_password("Password: ").expect("Couldn't read password");
+        println!("Code: {}", generate_code_from_pub_ip());
         debug!("Running receiver");
 
         let mut receiver = clients::Receiver::new(&format!("0.0.0.0:{}", cliargs.port), create_128_encryptor);
@@ -252,8 +299,15 @@ async fn main() {
     else if cliargs.mode == SENDER_MODE {
         debug!("Running sender");
         let pass = rpassword::prompt_password("Password: ").expect("Couldn't read password");
+        let addr = match cliargs.address {
+            Some(ip) => ip.to_string(),
+            None => {
+                let codes = utils::get_input("Code: ").expect("Coudln't read codes");
+                get_ip_from_code(&codes)
+            }
+        };
         let mut c = Sender::new(
-            &format!("{}:{}", cliargs.address.expect("No address specified."), cliargs.port),
+            &format!("{}:{}", &addr, cliargs.port),
             config.get_identifier().expect("No identifier set.").clone(), create_128_encryptor);
 
         if !c.init_send(cliargs.filename, config.get_identifier().expect("Identifier isn't present"), cliargs.identifier, &pass).unwrap() {
