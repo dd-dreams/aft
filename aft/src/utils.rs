@@ -299,8 +299,8 @@ pub fn send_identifier(ident: &[u8], socket: &mut TcpStream) -> io::Result<bool>
 }
 
 pub fn get_pub_ip() -> io::Result<String> {
-    let mut stream = TcpStream::connect("ifconfig.me:80")?;
-    let request = "GET / HTTP/1.0\r\nHost: ifconfig.me\r\nAccept: */*\r\n\r\n".as_bytes();
+    let mut stream = TcpStream::connect("api.ipify.org:80")?;
+    let request = "GET / HTTP/1.0\r\nHost: api.ipify.org\r\nAccept: */*\r\n\r\n".as_bytes();
 
     stream.write_all(request)?;
 
