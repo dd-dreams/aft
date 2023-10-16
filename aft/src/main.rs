@@ -34,7 +34,7 @@ const USAGE_MSG: &str = "Usage:
     aft -m server [-p <port>]";
 const OPTIONS_MSG: &str = "Options:
     -m --mode MODE              Run as `sender`, `server`, `receiver` or `download`.
-    -a --address ADDRESS        Address to connect to/host on.
+    -a --address ADDRESS        Address to connect to on.
     -p --port PORT              Port to host the server on.
     -i --identifier IDENTIFIER  Identifier to find the receiver. Used only when its not P2P.
     -v --verbose VERBOSE        Verbose level. Default is 1 (warnings only). Range 1-3.
