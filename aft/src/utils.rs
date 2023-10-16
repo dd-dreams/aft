@@ -264,13 +264,19 @@ pub fn download_speed(bytes_sent: usize) {
     print!("  {:.2}MB/s", mb);
 }
 
-pub fn get_accept_input(msg: &str) -> io::Result<char> {
+pub fn get_input(msg: &str) -> io::Result<String> {
     let mut input = String::new();
     print!("{}", msg);
     io::stdout().flush()?;
     io::stdin().read_line(&mut input)?;
+    // Removing \n
+    input.pop();
 
-    let res = input.chars().next().unwrap_or_default();
+    Ok(input)
+}
+
+pub fn get_accept_input(msg: &str) -> io::Result<char> {
+    let res = get_input(msg)?.chars().next().unwrap_or_default();
     Ok(
         if ['y', 'b'].contains(&res) {res} else {'n'}
         )
