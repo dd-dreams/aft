@@ -57,7 +57,7 @@ version = "1.0.0"
 dependencies = [
  "aes-gcm",
  "rand",
- "rand_core 0.5.1",
+ "rand_core 0.6.4",
  "scrypt",
  "x25519-dalek",
  "zeroize",
