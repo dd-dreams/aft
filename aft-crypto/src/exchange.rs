@@ -18,7 +18,7 @@ impl X25519Key {
 
     /// Generates a secret key and a public key.
     pub fn generate_keys() -> (PublicKey, EphemeralSecret) {
-        let secret = EphemeralSecret::new(OsRng);
+        let secret = EphemeralSecret::random_from_rng(OsRng);
         (PublicKey::from(&secret), secret)
     }
 

@@ -43,7 +43,7 @@ pub const PHC_STR_LEN: usize = 1
 pub fn create_hash(password: &mut [u8], salt: Option<&[u8]>) -> Result<PasswordHashString, scrypt::password_hash::Error> {
     let salt = match salt {
         None => SaltString::generate(&mut OsRng),
-        Some(s) => SaltString::b64_encode(s)?
+        Some(s) => SaltString::encode_b64(s)?
     };
     let hash = Scrypt.hash_password(password, &salt)?.to_string();
     let passhash = PasswordHashString::new(&hash)?;
