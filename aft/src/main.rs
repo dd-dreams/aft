@@ -1,7 +1,4 @@
-//! FT - File Transfer.
-//!
-//! Transfer files between two devices, with advanced functionality.
-
+//! Main.
 pub mod server;
 pub mod sender;
 pub mod utils;

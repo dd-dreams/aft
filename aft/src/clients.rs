@@ -1,5 +1,4 @@
-//! Clients.
-
+//! Clients (Receiver and Downloader).
 use std::net::{TcpStream, TcpListener};
 use std::io::{self, Write, Read};
 use sha2::{Sha256, Digest};

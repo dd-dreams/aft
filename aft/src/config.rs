@@ -1,3 +1,4 @@
+//! Handles the config file.
 use std::{fs::File,
           io,
           io::prelude::*,

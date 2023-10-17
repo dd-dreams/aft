@@ -1,5 +1,4 @@
 /// Module for various utilities used in other modules.
-
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::SeekFrom;

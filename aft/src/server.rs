@@ -1,18 +1,4 @@
-//! Handling server functionality (includes P2P).
-//!
-//! # Communication
-//! ## Directly (Peer to Peer)
-//! Peer to peer is where two clients connect to each other directly.
-//! There is the _sender_ and the _receiver_ when a file is transferred between two devices.
-//! The receiver starts by notifiying the sender that its connecting to a client that receives
-//! files, the _receiver_. Then, the sender sends the metadata of the file and the receiver
-//! does some checks, such as checking if a file with the same name exists already. After that,
-//! the sender starts sending chunks of the file to the receiver.
-//!
-//! ## Proxied
-//! In case where two clients don't want to connect to each other directly, a service can be used to
-//! allow them to communicate indirectly. This service (the server), just forwards the communication
-//! from the sender to the receiver and in the otherway.
+//! Handling middle server functionality.
 use tokio::net::{TcpListener, TcpStream};
 use tokio::io::{AsyncWriteExt, AsyncReadExt};
 use std::{io, net::SocketAddr};
