@@ -87,10 +87,10 @@ where
     T: AeadInPlace
 {
     /// Constructs a new Sender struct, and connects to `remote_ip`.
-    pub fn new(remote_ip: &str, ident: String, encryptor_func: fn(&[u8]) -> T) -> Self {
+    pub fn new(remote_addr: &str, ident: String, encryptor_func: fn(&[u8]) -> T) -> Self {
         // Remove http(s):// since aft doesn't support HTTPS.
-        let no_http_ip = remote_ip.replace("http://", "").replace("https://", "");
-        let socket = TcpStream::connect(no_http_ip.to_socket_addrs().expect("Couldn't resolve IP").next()
+        let no_http_addr = remote_ip.replace("http://", "").replace("https://", "");
+        let socket = TcpStream::connect(no_http_addr.to_socket_addrs().expect("Couldn't resolve IP").next()
             .expect("IP Not resolved"))
             .expect("Couldn't connect.");
         Sender {
