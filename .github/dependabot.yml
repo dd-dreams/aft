@@ -1,6 +1,10 @@
 version: 2
 updates:
   - package-ecosystem: "cargo"
-    directory: "/"
+    directory: "aft/"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "cargo"
+    directory: "aft-crypto/"
     schedule:
       interval: "daily"
