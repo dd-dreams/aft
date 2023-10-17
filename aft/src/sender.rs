@@ -1,6 +1,6 @@
 //! Handling sender.
 use std::{io,
-    net::TcpStream,
+    net::{TcpStream, ToSocketAddrs},
     path::Path
 };
 use std::io::{Write, Read};
@@ -88,7 +88,11 @@ where
 {
     /// Constructs a new Sender struct, and connects to `remote_ip`.
     pub fn new(remote_ip: &str, ident: String, encryptor_func: fn(&[u8]) -> T) -> Self {
-        let socket = TcpStream::connect(remote_ip).expect("Couldn't connect.");
+        // Remove http(s):// since aft doesn't support HTTPS.
+        let no_http_ip = remote_ip.replace("http://", "").replace("https://", "");
+        let socket = TcpStream::connect(no_http_ip.to_socket_addrs().expect("Couldn't resolve IP").next()
+            .expect("IP Not resolved"))
+            .expect("Couldn't connect.");
         Sender {
             writer: SWriter(socket, EncAlgo::<T>::new(&[0u8; KEY_LENGTH], encryptor_func)),
             file_path: String::new(),
