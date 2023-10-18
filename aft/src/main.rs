@@ -19,11 +19,11 @@ use std::env;
 use aft_crypto::{data::{Aes128Gcm, create_128_encryptor},
                  bip39};
 
-pub const SENDER_MODE: u8 = 1;
-pub const RECEIVER_MODE: u8 = 2;
-pub const DOWNLOAD_MODE: u8 = 3;
-pub const SERVER_MODE: u8 = 4;
-pub const DEFAULT_PORT: u16 = 1122;
+const SENDER_MODE: u8 = 1;
+const RECEIVER_MODE: u8 = 2;
+const DOWNLOAD_MODE: u8 = 3;
+const SERVER_MODE: u8 = 4;
+const DEFAULT_PORT: u16 = 1122;
 const HELP_MSG: &str = "aft - file transfer done easily";
 const USAGE_MSG: &str = "Usage:
     aft --mode sender [--address <address>] [--port <port>] <filename>
