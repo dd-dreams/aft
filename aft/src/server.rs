@@ -98,6 +98,8 @@ impl Server {
         // Read signal from the sender
         let signal = read_signal(sender).await?;
         receiver.write(signal.as_bytes()).await?;
+        // Write the sender's identifier
+        receiver.write(sen_identifier.as_bytes()).await?;
 
         let acceptance = read_signal(&mut receiver).await?;
 
