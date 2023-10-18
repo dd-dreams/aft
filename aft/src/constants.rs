@@ -10,7 +10,7 @@ pub const MAX_SIZE_LEN: usize = 20;
 /// Maximum length of the "modified" in the `metadata` JSON.
 pub const MAX_MODIFIED_LEN: usize = 12;
 /// Maximum username length.
-pub const MAX_IDENTIFIER_LEN: usize = 30;
+pub const MAX_IDENTIFIER_LEN: usize = 10;
 /// Maximum buffer length that is received from a stream.
 pub const MAX_METADATA_LEN: usize = MAX_NAME_LEN + MAX_TYPE_LEN + MAX_SIZE_LEN + MAX_MODIFIED_LEN + MAX_IDENTIFIER_LEN + 40 /* 40 = other chars such as { */;
 /// Maximum size of a chunk (64KB).
