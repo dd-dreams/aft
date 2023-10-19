@@ -181,6 +181,11 @@ async fn main() {
     // 1 to skip executable name
     let mut index = 1;
 
+    if args.len()-1 == 1  && ["--version", "-v"].contains(&args[1].as_str()){
+        println!("aft v{}", env!("CARGO_PKG_VERSION"));
+        return;
+    }
+
     while index < args.len() {
         // The filename.
         let arg = &args[index];
