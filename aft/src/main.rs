@@ -294,6 +294,7 @@ async fn main() {
         downloader.init(cliargs.register, &mut pass).expect("There was an error with the server.");
     }
     else if cliargs.mode == SENDER_MODE {
+        // if config.get_identifier().expect("No identifier provided").len() 0
         debug!("Running sender");
         let pass = rpassword::prompt_password("Password: ").expect("Couldn't read password");
         let addr = match cliargs.address {
