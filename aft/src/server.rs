@@ -146,7 +146,7 @@ impl Server {
 
     async fn read_and_hash_pass(socket: &mut TcpStream, salt: &[u8]) -> io::Result<String> {
         let mut pass = [0; SHA_256_LEN];
-        socket.read(&mut pass).await?;
+        socket.read_exact(&mut pass).await?;
 
         let pass_phc = match create_hash(&pass, Some(salt)) {
             Err(e) => {
