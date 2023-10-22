@@ -160,8 +160,8 @@ fn get_ip_from_code(codes: &str) -> String {
     let mut pub_ip = String::new();
 
     for code in codes.split('-') {
-        for i in 0..wordlist.len() {
-            if wordlist[i] == code {
+        for (i, word) in wordlist.iter().enumerate() {
+            if word == &code {
                 pub_ip.push_str(&i.to_string());
                 pub_ip.push('.');
             }
