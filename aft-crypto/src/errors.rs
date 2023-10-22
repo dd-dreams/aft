@@ -4,7 +4,7 @@ use std::{fmt, io};
 pub enum EncryptionErrors {
     FailedEncrypt,
     FailedDecrypt,
-    IncorrectPassword
+    IncorrectPassword,
 }
 
 #[derive(Debug)]
@@ -12,7 +12,7 @@ pub enum CiFileErrors {
     NoSalt,
     NoNonce,
     FileStructureNotValid,
-    FileDoesntExist
+    FileDoesntExist,
 }
 
 #[derive(Debug)]
@@ -33,7 +33,7 @@ impl fmt::Display for CiFileError {
                 CiFileErrors::NoNonce => "No nonce is present.",
                 CiFileErrors::FileStructureNotValid =>
                     "File structure is wrong. Not a valid file to handle.",
-                CiFileErrors::FileDoesntExist => "File doesn't exist."
+                CiFileErrors::FileDoesntExist => "File doesn't exist.",
             }
         )
     }
@@ -48,7 +48,7 @@ impl From<io::Error> for CiFileError {
             io::ErrorKind::NotFound => CiFileError {
                 kind: CiFileErrors::FileDoesntExist,
             },
-            _ => panic!("{:?}", error)
+            _ => panic!("{:?}", error),
         }
     }
 }

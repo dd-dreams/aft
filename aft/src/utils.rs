@@ -1,16 +1,12 @@
+use crate::constants::MAX_IDENTIFIER_LEN;
+use log::{debug, error, info};
+use sha2::{Digest, Sha256};
 /// Module for various utilities used in other modules.
 use std::{
     fs::{self, File},
-    io::{
-        self,
-        prelude::*,
-        SeekFrom
-    },
-    net::{TcpStream, Ipv4Addr}
+    io::{self, prelude::*, SeekFrom},
+    net::{Ipv4Addr, TcpStream},
 };
-use log::{info, debug, error};
-use sha2::{Sha256, Digest};
-use crate::constants::MAX_IDENTIFIER_LEN;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Signals {
@@ -33,7 +29,7 @@ pub enum Signals {
     /// Unspecific signal. Custimized by the enviornment.
     Other,
     /// Unknown signal.
-    Unknown
+    Unknown,
 }
 
 impl From<&str> for Signals {
@@ -48,7 +44,7 @@ impl From<&str> for Signals {
             "FTSIG7" => Signals::OK,
             "FTSIG8" => Signals::Error,
             "FTSIG9" => Signals::Other,
-            _ => Signals::Unknown
+            _ => Signals::Unknown,
         }
     }
 }
@@ -56,16 +52,16 @@ impl From<&str> for Signals {
 impl From<&Signals> for &str {
     fn from(v: &Signals) -> Self {
         match v {
-           Signals::EndFt => "FTSIG1",
-           Signals::ClientNotOnline => "FTSIG2",
-           Signals::Register => "FTSIG3",
-           Signals::StartFt => "FTSIG4",
-           Signals::CloseFt => "FTSIG5",
-           Signals::Login => "FTSIG6",
-           Signals::OK => "FTSIG7",
-           Signals::Error => "FTSIG8",
-           Signals::Other => "FTSIG9",
-           _ => "FTSIG"
+            Signals::EndFt => "FTSIG1",
+            Signals::ClientNotOnline => "FTSIG2",
+            Signals::Register => "FTSIG3",
+            Signals::StartFt => "FTSIG4",
+            Signals::CloseFt => "FTSIG5",
+            Signals::Login => "FTSIG6",
+            Signals::OK => "FTSIG7",
+            Signals::Error => "FTSIG8",
+            Signals::Other => "FTSIG9",
+            _ => "FTSIG",
         }
     }
 }
@@ -82,7 +78,7 @@ impl std::fmt::Display for Signals {
             Signals::OK => write!(f, "Ok."),
             Signals::Error => write!(f, "Error."),
             Signals::Other => write!(f, "Other."),
-            _ => write!(f, "Unknown signal.")
+            _ => write!(f, "Unknown signal."),
         }
     }
 }
@@ -124,7 +120,7 @@ macro_rules! mut_vec {
 /// Represents a client file. Provides special methods that are used in this program.
 pub struct FileOperations {
     pub file: File,
-    hasher: Sha256
+    hasher: Sha256,
 }
 
 impl FileOperations {
@@ -133,7 +129,7 @@ impl FileOperations {
         let file = FileOperations::open_w_file(path)?;
         Ok(FileOperations {
             file,
-            hasher: Sha256::new()
+            hasher: Sha256::new(),
         })
     }
 
@@ -144,7 +140,7 @@ impl FileOperations {
         let file = FileOperations::create_file(path)?;
         Ok(FileOperations {
             file,
-            hasher: Sha256::new()
+            hasher: Sha256::new(),
         })
     }
 
@@ -280,9 +276,7 @@ pub fn get_input(msg: &str) -> io::Result<String> {
 
 pub fn get_accept_input(msg: &str) -> io::Result<char> {
     let res = get_input(msg)?.chars().next().unwrap_or_default();
-    Ok(
-        if ['y', 'b'].contains(&res) {res} else {'n'}
-        )
+    Ok(if ['y', 'b'].contains(&res) { res } else { 'n' })
 }
 
 /// Sends an identifier through a socket.
@@ -291,7 +285,7 @@ pub fn get_accept_input(msg: &str) -> io::Result<char> {
 pub fn send_identifier(ident: &[u8], socket: &mut TcpStream) -> io::Result<bool> {
     if ident.len() != MAX_IDENTIFIER_LEN {
         error!("Identifier length != 10.");
-        return Ok(false)
+        return Ok(false);
     }
     // Write the identifier of this receiver
     socket.write(ident)?;

@@ -2,13 +2,12 @@
 //! This module will try to use the OS provided wordlists,
 //! but if there are none, it will use BIP39 wordlist.
 use crate::bip39;
-use rand::{Rng, thread_rng};
+use rand::{thread_rng, Rng};
 
 pub const DELIMITER: char = '-';
 
 // Linux and macOS wordlist path. Windows doesn't have a native one.
 const UNIX_WORDLIST: &str = "/usr/share/dict/words";
-
 
 /// Generate a unique passphrase using a wordlist.
 /// Generates a passphrase and not a password because its easier to remember.
@@ -36,4 +35,3 @@ fn random_passphrase(wordlist: &[&str]) -> String {
     passphrase.make_ascii_lowercase();
     passphrase
 }
-

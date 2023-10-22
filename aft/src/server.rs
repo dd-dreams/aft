@@ -1,30 +1,23 @@
 //! Handling middle server functionality.
-use tokio::{
-    net::{TcpListener, TcpStream},
-    io::{AsyncWriteExt, AsyncReadExt},
-};
-use std::{
-    io,
-    net::SocketAddr,
-    collections::HashMap,
-    sync::Arc
-};
 use crate::{
-    utils::{
-        new_ip,
-        bytes_to_string,
-        Signals},
     constants::{
-        MAX_CONTENT_LEN, MAX_METADATA_LEN, MAX_IDENTIFIER_LEN,
-        SERVER, CLIENT_RECV, SIGNAL_LEN, SHA_256_LEN},
-    database::Database
+        CLIENT_RECV, MAX_CONTENT_LEN, MAX_IDENTIFIER_LEN, MAX_METADATA_LEN, SERVER, SHA_256_LEN,
+        SIGNAL_LEN,
+    },
+    database::Database,
+    utils::{bytes_to_string, new_ip, Signals},
 };
-use log::{info, error, debug};
-use tokio::sync::RwLock;
 use aft_crypto::{
-    password_encryption::create_hash,
+    data::{SData, AES_GCM_NONCE_SIZE, AES_GCM_TAG_SIZE},
     exchange::KEY_LENGTH,
-    data::{AES_GCM_NONCE_SIZE, AES_GCM_TAG_SIZE, SData},
+    password_encryption::create_hash,
+};
+use log::{debug, error, info};
+use std::{collections::HashMap, io, net::SocketAddr, sync::Arc};
+use tokio::sync::RwLock;
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::{TcpListener, TcpStream},
 };
 
 pub const UNFINISHED_FILE_MSG: &str = "undone";
@@ -43,8 +36,11 @@ macro_rules! error_connection {
     };
     ($comm:expr, $err_comm:expr) => {
         match $comm {
-            Err(e) => {error!("Error in connection: {:?}", e); $err_comm;},
-            Ok(v) => v
+            Err(e) => {
+                error!("Error in connection: {:?}", e);
+                $err_comm;
+            }
+            Ok(v) => v,
         }
     };
 }
@@ -52,13 +48,13 @@ macro_rules! error_connection {
 enum StatusSender {
     Null,
     Blocked,
-    Rejected
+    Rejected,
 }
 
 /// Represents a server, which negotiates between clients or client to server.
 pub struct Server {
     address: SocketAddr,
-    db: Database
+    db: Database,
 }
 
 impl Server {
@@ -96,7 +92,7 @@ impl Server {
             if !Self::is_ident_exists(clients.clone(), recv_identifier).await {
                 info!("{} is not online", recv_identifier);
                 sender.write(Signals::Error.as_bytes()).await?;
-                return Ok(StatusSender::Null)
+                return Ok(StatusSender::Null);
             } else {
                 // The receiver is online
                 sender.write(Signals::OK.as_bytes()).await?;
@@ -127,7 +123,10 @@ impl Server {
                 return Ok(StatusSender::Blocked)
             },
             Signals::OK => (),
-            s => {error!("Invalid signal: {}", s); return Ok(StatusSender::Null)}
+            s => {
+                error!("Invalid signal: {}", s);
+                return Ok(StatusSender::Null);
+            }
         }
 
         Server::read_both_pks(sender, &mut receiver).await?;
@@ -148,7 +147,7 @@ impl Server {
 
     pub async fn is_ident_exists(clients: MovT<ClientsHashMap>, identifier: &str) -> bool {
         if clients.read().await.contains_key(identifier) {
-            return true
+            return true;
         }
         false
     }
@@ -161,8 +160,8 @@ impl Server {
             Err(e) => {
                 error!("Couldn't hash password. {}", e);
                 return Ok(String::new());
-            },
-            Ok(v) => v
+            }
+            Ok(v) => v,
         };
 
         Ok(pass_phc.to_string())
@@ -232,13 +231,17 @@ pub async fn init(mut server: Server) -> io::Result<()> {
             // Read what the client wants: download or sending
             let command = error_connection!(socket.read_u8().await, return);
             if command == CLIENT_RECV {
-                let identifier = error_connection!(Server::read_identifier(&mut socket).await, return);
+                let identifier =
+                    error_connection!(Server::read_identifier(&mut socket).await, return);
                 // TODO: Send an error maybe?
                 if identifier.is_empty() {
                     return;
                 }
 
-                let pass_phc = error_connection!(Server::read_and_hash_pass(&mut socket, identifier.as_bytes()).await, return);
+                let pass_phc = error_connection!(
+                    Server::read_and_hash_pass(&mut socket, identifier.as_bytes()).await,
+                    return
+                );
                 // If the server couldn't hash the password, then return.
                 if pass_phc.is_empty() {
                     return;
@@ -255,7 +258,10 @@ pub async fn init(mut server: Server) -> io::Result<()> {
                         },
                         _ => {
                             debug!("Invalid signal: {}", signal.as_str());
-                            error_connection!(socket.write(Signals::Unknown.as_bytes()).await, return);
+                            error_connection!(
+                                socket.write(Signals::Unknown.as_bytes()).await,
+                                return
+                            );
                         }
                     }
                     clients.write().await.insert(identifier, socket);
@@ -287,9 +293,11 @@ pub async fn init(mut server: Server) -> io::Result<()> {
             // The sender (socket = sender)
             else {
                 // Read the receiver's identifier
-                let recv_identifier = error_connection!(Server::read_identifier(&mut socket).await, return);
+                let recv_identifier =
+                    error_connection!(Server::read_identifier(&mut socket).await, return);
                 // Read the sender's identifier
-                let sen_identifier = error_connection!(Server::read_identifier(&mut socket).await, return);
+                let sen_identifier =
+                    error_connection!(Server::read_identifier(&mut socket).await, return);
                 if recv_identifier.is_empty() || sen_identifier.is_empty() {
                     return;
                 }
@@ -319,9 +327,7 @@ pub async fn init(mut server: Server) -> io::Result<()> {
 ///
 /// Returns the signal the client has ended with.
 /// Error when there was a connection problem.
-async fn process_proxied(sender: &mut TcpStream, receiver: &mut TcpStream) ->
-    io::Result<Signals>
-{
+async fn process_proxied(sender: &mut TcpStream, receiver: &mut TcpStream) -> io::Result<Signals> {
     let mut metadata = [0; MAX_METADATA_LEN + NONCE_TAG_LEN];
     sender.read_exact(&mut metadata).await?;
     // Write metadata to receiver

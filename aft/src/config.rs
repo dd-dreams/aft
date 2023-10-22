@@ -1,14 +1,7 @@
 //! Handles the config file.
-use std::{fs::File,
-          io,
-          io::prelude::*,
-          path::Path
-};
+use crate::{errors::ErrorsConfig, utils::error_other};
 use log::error;
-use crate::{
-    utils::error_other,
-    errors::ErrorsConfig
-};
+use std::{fs::File, io, io::prelude::*, path::Path};
 
 const VERBOSE_OPTION: &str = "verbose";
 const IDENTIFIER_OPTION: &str = "identifier";
@@ -20,13 +13,13 @@ enum Options {
     Verbose(u8),
     Identifier(String),
     DefaultMode(u8),
-    None
+    None,
 }
 
 pub struct Config {
     verbose: Options,
     identifier: Options,
-    mode: Options
+    mode: Options,
 }
 
 impl Config {
@@ -36,7 +29,7 @@ impl Config {
         if !path.is_dir() {
             let mut config = String::new();
             File::open(path)?.read_to_string(&mut config)?;
-            return Config::generate_config(config)
+            return Config::generate_config(config);
         }
         Ok(Config::default())
     }
@@ -51,7 +44,7 @@ impl Config {
             // "option = value"
             if line_splitted.len() != 2 || !OPTIONS.contains(&line_splitted[0]) {
                 error!("Bad syntax, line: {}", index);
-                return Err(error_other!(ErrorsConfig::WrongSyntax))
+                return Err(error_other!(ErrorsConfig::WrongSyntax));
             }
 
             match line_splitted[0].to_lowercase().as_str().trim() {
@@ -64,17 +57,17 @@ impl Config {
                         }
                     } else {
                         error!("Already assigned a value, line: {}", index);
-                        return Err(error_other!(ErrorsConfig::WrongSyntax))
+                        return Err(error_other!(ErrorsConfig::WrongSyntax));
                     }
-                },
+                }
                 IDENTIFIER_OPTION => {
                     if let Options::None = identifier {
                         identifier = Options::Identifier(line_splitted[1].to_string());
                     } else {
                         error!("Already assigned a value, line: {}", index);
-                        return Err(error_other!(ErrorsConfig::WrongSyntax))
+                        return Err(error_other!(ErrorsConfig::WrongSyntax));
                     }
-                },
+                }
                 MODE_OPTION => {
                     if let Options::None = mode {
                         let value = Config::get_char_val(&line_splitted, index)?;
@@ -85,18 +78,20 @@ impl Config {
                         }
                     } else {
                         error!("Already assigned a value, line: {}", index);
-                        return Err(error_other!(ErrorsConfig::WrongSyntax))
+                        return Err(error_other!(ErrorsConfig::WrongSyntax));
                     }
-                },
+                }
                 _ => {
                     error!("No such option, line: {}", index);
-                    return Err(error_other!(ErrorsConfig::NoOption))
+                    return Err(error_other!(ErrorsConfig::NoOption));
                 }
             }
         }
 
         Ok(Config {
-            verbose, identifier, mode
+            verbose,
+            identifier,
+            mode,
         })
     }
 
@@ -104,7 +99,7 @@ impl Config {
         let value = tokens[1].trim().chars().next();
         if value.is_none() {
             error!("Bad syntax, line: {}", index);
-            return Err(error_other!(ErrorsConfig::WrongSyntax))
+            return Err(error_other!(ErrorsConfig::WrongSyntax));
         }
         Ok(value.unwrap())
     }
@@ -142,8 +137,7 @@ impl Default for Config {
         Config {
             verbose: Options::None,
             identifier: Options::None,
-            mode: Options::None
+            mode: Options::None,
         }
     }
 }
-

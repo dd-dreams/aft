@@ -1,21 +1,28 @@
 //! Handling sender.
-use std::{io::{self, Write, Read},
-    net::{TcpStream, ToSocketAddrs},
-    path::Path,
-    time::SystemTime
-};
-use json;
-use log::{error, warn, info, debug};
-use sha2::{Sha256, Digest};
 use crate::{
-    utils::{FileOperations, error_other, progress_bar, Signals, mut_vec, download_speed, send_identifier},
+    clients::{BaseSocket, Crypto, SWriter},
+    constants::{
+        CLIENT_SEND, MAX_CHECKSUM_LEN, MAX_CONTENT_LEN, MAX_METADATA_LEN, SERVER, SIGNAL_LEN,
+    },
     errors,
-    constants::{MAX_METADATA_LEN, MAX_CONTENT_LEN, SERVER, CLIENT_SEND, MAX_CHECKSUM_LEN, SIGNAL_LEN},
-    clients::{BaseSocket, Crypto, SWriter}
+    utils::{
+        download_speed, error_other, mut_vec, progress_bar, send_identifier, FileOperations,
+        Signals,
+    },
 };
 use aft_crypto::{
+    data::{AeadInPlace, EncAlgo, SData},
     exchange::{PublicKey, KEY_LENGTH},
-    data::{EncAlgo, AeadInPlace, SData}};
+};
+use json;
+use log::{debug, error, info, warn};
+use sha2::{Digest, Sha256};
+use std::{
+    io::{self, Read, Write},
+    net::{TcpStream, ToSocketAddrs},
+    path::Path,
+    time::SystemTime,
+};
 
 fn update_pb(curr_bars_count: &mut u8, pb_length: u64, bytes_transferred: u64) {
     *curr_bars_count = (bytes_transferred / (pb_length + 1)).try_into().unwrap_or(0);
@@ -25,7 +32,7 @@ fn update_pb(curr_bars_count: &mut u8, pb_length: u64, bytes_transferred: u64) {
 fn basic_file_checks(path: &Path) -> io::Result<bool> {
     if path.metadata()?.len() == 0 {
         error!("File is empty");
-        return Ok(false)
+        return Ok(false);
     }
 
     if path.extension().is_none() {
@@ -34,7 +41,7 @@ fn basic_file_checks(path: &Path) -> io::Result<bool> {
 
     if path.is_dir() {
         error!("Inputted a name of a directory and not a file");
-        return Err(error_other!("Not a file"))
+        return Err(error_other!("Not a file"));
     }
 
     Ok(true)
@@ -47,12 +54,12 @@ pub struct Sender<T> {
     file_path: String,
     current_pos: u64,
     identifier: String,
-    gen_encryptor: fn(&[u8]) -> T
+    gen_encryptor: fn(&[u8]) -> T,
 }
 
 impl<T> BaseSocket<T> for Sender<T>
 where
-    T: AeadInPlace
+    T: AeadInPlace,
 {
     fn get_writer(&self) -> &SWriter<T> {
         &self.writer
@@ -86,7 +93,7 @@ impl<T> Crypto for Sender<T> {
 
 impl<T> Sender<T>
 where
-    T: AeadInPlace
+    T: AeadInPlace,
 {
     /// Constructs a new Sender struct, and connects to `remote_ip`.
     pub fn new(remote_addr: &str, ident: String, encryptor_func: fn(&[u8]) -> T) -> Self {
@@ -100,7 +107,7 @@ where
             file_path: String::new(),
             current_pos: 0,
             identifier: ident,
-            gen_encryptor: encryptor_func
+            gen_encryptor: encryptor_func,
         }
     }
 
@@ -137,7 +144,11 @@ where
     }
 
     pub fn auth(&mut self, pass: &str) -> io::Result<bool> {
-        let pass_hashed = {let mut sha = Sha256::new(); sha.update(pass); sha.finalize()};
+        let pass_hashed = {
+            let mut sha = Sha256::new();
+            sha.update(pass);
+            sha.finalize()
+        };
 
         debug!("Authenticating ...");
         self.writer.write_ext(mut_vec!(pass_hashed))?;
@@ -181,7 +192,7 @@ where
         let file_path = Path::new(path);
 
         if !basic_file_checks(file_path)? {
-            return Ok(false)
+            return Ok(false);
         }
 
         self.file_path = path.to_string();
@@ -200,15 +211,15 @@ where
                     Signals::OK => (),
                     Signals::Error => {
                         error!("Receiver is not online.");
-                        return Ok(false)
-                    },
+                        return Ok(false);
+                    }
                     s => {
                         error!("Unexepected signal: {}", s);
                         return Ok(false);
                     }
                 }
             } else {
-                return Err(error_other!(errors::Errors::NoReceiverIdentifier))
+                return Err(error_other!(errors::Errors::NoReceiverIdentifier));
             }
 
             debug!("Signaling to start");
@@ -217,8 +228,14 @@ where
 
             match self.read_signal_server()? {
                 Signals::OK => info!("Reciever accepted."),
-                Signals::Error => {error!("Receiver rejected."); return Ok(false)},
-                s => {error!("Received invalid signal: {}", s); return Ok(false)}
+                Signals::Error => {
+                    error!("Receiver rejected.");
+                    return Ok(false);
+                }
+                s => {
+                    error!("Received invalid signal: {}", s);
+                    return Ok(false);
+                }
             }
 
             self.shared_secret()?;
@@ -226,7 +243,7 @@ where
             self.shared_secret()?;
             if !self.auth(&pass.0)? {
                 error!("Incorrect password.");
-                return Ok(false)
+                return Ok(false);
             }
         }
 
@@ -309,8 +326,8 @@ where
                         download_speed(bytes_sent_sec);
                         bytes_sent_sec = 0;
                     }
-                },
-                Err(e) => error!("An error occurred while printing download speed: {}", e)
+                }
+                Err(e) => error!("An error occurred while printing download speed: {}", e),
             }
         }
 
@@ -318,7 +335,7 @@ where
         debug!("Reached EOF");
         debug!("Ending file transfer and writing checksum");
         buffer[..SIGNAL_LEN].copy_from_slice(Signals::EndFt.as_bytes());
-        buffer[SIGNAL_LEN..MAX_CHECKSUM_LEN+SIGNAL_LEN].copy_from_slice(&file.checksum());
+        buffer[SIGNAL_LEN..MAX_CHECKSUM_LEN + SIGNAL_LEN].copy_from_slice(&file.checksum());
         self.writer.write_ext(&mut buffer)?;
         info!("Finished successfully");
 

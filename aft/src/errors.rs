@@ -13,16 +13,15 @@ pub enum Errors {
     /// When requesting from a socket to download.
     NotServer,
     /// When the client don't have the receiver's identifier.
-    NoReceiverIdentifier
+    NoReceiverIdentifier,
 }
 
 #[derive(Debug)]
 pub enum ErrorsConfig {
     WrongSyntax,
     AlreadyAssigned,
-    NoOption
+    NoOption,
 }
-
 
 impl fmt::Display for Errors {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -49,4 +48,3 @@ impl fmt::Display for ErrorsConfig {
 
 impl error::Error for Errors {}
 impl error::Error for ErrorsConfig {}
-

@@ -5,14 +5,14 @@ pub use x25519_dalek::{EphemeralSecret, PublicKey, SharedSecret};
 pub const KEY_LENGTH: usize = 32;
 
 pub struct X25519Key {
-    shared_secret: SharedSecret
+    shared_secret: SharedSecret,
 }
 
 impl X25519Key {
     /// Generates a new shared secret.
     pub fn new(secret: EphemeralSecret, their_pk: &PublicKey) -> Self {
         X25519Key {
-            shared_secret: X25519Key::exchange(secret, their_pk)
+            shared_secret: X25519Key::exchange(secret, their_pk),
         }
     }
 

@@ -1,14 +1,10 @@
 //! Password encryption using [`scrypt`].
 pub use scrypt::{
     password_hash::{
-        rand_core::OsRng,
-        PasswordHasher,
+        rand_core::OsRng, PasswordHash, PasswordHashString, PasswordHasher, PasswordVerifier,
         SaltString,
-        PasswordHash,
-        PasswordVerifier,
-        PasswordHashString
     },
-    Scrypt
+    Scrypt,
 };
 
 /// Salt size of password (not in Base64) (excludes 0)
@@ -46,7 +42,7 @@ pub const PHC_STR_LEN: usize = 1
 pub fn create_hash(password: &[u8], salt: Option<&[u8]>) -> Result<PasswordHashString, scrypt::password_hash::Error> {
     let salt = match salt {
         None => SaltString::generate(&mut OsRng),
-        Some(s) => SaltString::encode_b64(s)?
+        Some(s) => SaltString::encode_b64(s)?,
     };
     let hash = Scrypt.hash_password(password, &salt)?.to_string();
     let passhash = PasswordHashString::new(&hash)?;

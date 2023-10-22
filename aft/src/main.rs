@@ -1,27 +1,23 @@
 //! Main.
-pub mod server;
-pub mod sender;
-pub mod utils;
-pub mod errors;
-pub mod constants;
-pub mod config;
-pub mod database;
 pub mod clients;
+pub mod config;
+pub mod constants;
+pub mod database;
+pub mod errors;
+pub mod sender;
+pub mod server;
+pub mod utils;
 
-use server::Server;
-use sender::Sender;
-use std::{
-    env::args as args_fn,
-    io::Write,
-    env
+use aft_crypto::{
+    bip39,
+    data::{create_128_encryptor, Aes128Gcm, SData},
 };
+use config::Config;
 use env_logger::{self, fmt::Color};
 use log::{debug, error, Level};
-use config::Config;
-use aft_crypto::{
-    data::{Aes128Gcm, create_128_encryptor, SData},
-    bip39
-};
+use sender::Sender;
+use server::Server;
+use std::{env, env::args as args_fn, io::Write};
 
 const SENDER_MODE: u8 = 1;
 const RECEIVER_MODE: u8 = 2;
@@ -50,12 +46,20 @@ struct CliArgs<'a> {
     identifier: Option<&'a str>,
     verbose: u8,
     filename: &'a str,
-    pub register: bool
+    pub register: bool,
 }
 
 impl<'a> CliArgs<'a> {
     pub fn new(mode: u8) -> Self {
-        CliArgs { mode, address: None, port: DEFAULT_PORT, identifier: None, verbose: 1, filename: "", register: false}
+        CliArgs {
+            mode,
+            address: None,
+            port: DEFAULT_PORT,
+            identifier: None,
+            verbose: 1,
+            filename: "",
+            register: false,
+        }
     }
 
     pub fn is_server_receiver(&self) -> bool {
@@ -178,14 +182,15 @@ async fn main() {
         return;
     }
 
-    let mut config = Config::new(&format!("{}/../.config", env!("CARGO_MANIFEST_DIR"))).unwrap_or_default();
+    let mut config =
+        Config::new(&format!("{}/../.config", env!("CARGO_MANIFEST_DIR"))).unwrap_or_default();
     let mut verbose_mode = config.get_verbose();
 
     let mut cliargs = CliArgs::new(config.get_mode());
     // 1 to skip executable name
     let mut index = 1;
 
-    if args.len()-1 == 1  && ["--version", "-v"].contains(&args[1].as_str()){
+    if args.len() - 1 == 1 && ["--version", "-v"].contains(&args[1].as_str()) {
         println!("aft v{}", env!("CARGO_PKG_VERSION"));
         return;
     }
@@ -194,47 +199,42 @@ async fn main() {
         // The filename.
         let arg = &args[index];
         if ["--mode", "-m"].contains(&arg.to_lowercase().as_str()) {
-            cliargs = CliArgs::new(match args[index+1].to_lowercase().as_str() {
+            cliargs = CliArgs::new(match args[index + 1].to_lowercase().as_str() {
                 "sender" => SENDER_MODE,
                 "receiver" => RECEIVER_MODE,
                 "download" => DOWNLOAD_MODE,
                 "server" => SERVER_MODE,
                 _ => {println!("Invalid mode."); return;}
             })
-        }
-        else if ["--address", "-a"].contains(&arg.to_lowercase().as_str()) {
+        } else if ["--address", "-a"].contains(&arg.to_lowercase().as_str()) {
             if cliargs.is_server_receiver() {
                 println!("Can't use {} argument when mode==server,receiver", arg);
                 return;
             }
             // TODO: add check for IP
-            cliargs.set_address(&args[index+1]);
-        }
-        else if ["--port", "-p"].contains(&arg.to_lowercase().as_str()) {
-            cliargs.set_port(if let Ok(v) = args[index+1].parse() {
+            cliargs.set_address(&args[index + 1]);
+        } else if ["--port", "-p"].contains(&arg.to_lowercase().as_str()) {
+            cliargs.set_port(if let Ok(v) = args[index + 1].parse() {
                 v
             } else {
                 println!("Not a port.");
                 return;
             });
-        }
-        else if ["--identifier", "-i"].contains(&arg.to_lowercase().as_str()) {
+        } else if ["--identifier", "-i"].contains(&arg.to_lowercase().as_str()) {
             if cliargs.is_server_receiver() {
                 println!("Can't use {} argument when mode==server,receiver", arg);
                 return;
             }
-            cliargs.set_identifier(&args[index+1]);
-        }
-        else if ["--verbose", "-v"].contains(&arg.to_lowercase().as_str()) {
-            cliargs.set_verbose(if let Ok(v) = args[index+1].parse() {
+            cliargs.set_identifier(&args[index + 1]);
+        } else if ["--verbose", "-v"].contains(&arg.to_lowercase().as_str()) {
+            cliargs.set_verbose(if let Ok(v) = args[index + 1].parse() {
                 verbose_mode = v;
                 v
             } else {
                 println!("Invalid verbose level.");
                 return;
             });
-        }
-        else if ["--register", "-r"].contains(&arg.to_lowercase().as_str()) {
+        } else if ["--register", "-r"].contains(&arg.to_lowercase().as_str()) {
             if cliargs.is_sender() {
                 println!("Can't use {} argument when mode==sender", arg);
                 return;
@@ -242,11 +242,14 @@ async fn main() {
             cliargs.register = true;
             index -= 1;
         } else if ["--config", "-c"].contains(&arg.to_lowercase().as_str()) {
-            config = match Config::new(&args[index+1]) {
+            config = match Config::new(&args[index + 1]) {
                 Ok(v) => v,
-                Err(_) => {println!("Invalid config location"); return;}
+                Err(_) => {
+                    println!("Invalid config location");
+                    return;
+                }
             }
-        } else if index+1 == args.len() {
+        } else if index + 1 == args.len() {
             if !cliargs.set_filename(&args[index]) {
                 println!("A filename is only passed when using sender mode");
                 return;
@@ -262,7 +265,7 @@ async fn main() {
         1 => "warn",
         2 => "info",
         3 => "debug",
-        _ => "trace"
+        _ => "trace",
     };
     build_logger(verbose_mode);
 
@@ -274,20 +277,19 @@ async fn main() {
         // TODO?
         let pass = env::var("PGPASSWORD").expect("Invalid PGPASSWORD environment variable.");
         let user = env::var("PGUSER").expect("Invalid PGUSER environment variable.");
-        server::init(
-            Server::new(cliargs.port, &user, SData(pass)
-                ).await).await.unwrap();
-    }
-    else if cliargs.mode == RECEIVER_MODE {
+        server::init(Server::new(cliargs.port, &user, SData(pass)).await)
+            .await
+            .unwrap();
+    } else if cliargs.mode == RECEIVER_MODE {
         let pass = SData(rpassword::prompt_password("Password: ").expect("Couldn't read password"));
         println!("Code: {}", generate_code_from_pub_ip());
         debug!("Running receiver");
 
-        let mut receiver = clients::Receiver::new(&format!("0.0.0.0:{}", cliargs.port), create_128_encryptor);
+        let mut receiver =
+            clients::Receiver::new(&format!("0.0.0.0:{}", cliargs.port), create_128_encryptor);
 
         receiver.receive(pass).expect("Something went wrong");
-    }
-    else if cliargs.mode == DOWNLOAD_MODE {
+    } else if cliargs.mode == DOWNLOAD_MODE {
         debug!("Running downloader");
         let identifier = config.get_identifier();
         if identifier.is_none() {
@@ -295,14 +297,21 @@ async fn main() {
             return;
         }
         let mut downloader = clients::Downloader::<Aes128Gcm>::new(
-            &format!("{}:{}", cliargs.address.expect("No address specified"), cliargs.port),
-            identifier.unwrap().to_string(), create_128_encryptor);
+            &format!(
+                "{}:{}",
+                cliargs.address.expect("No address specified"),
+                cliargs.port
+            ),
+            identifier.unwrap().to_string(),
+            create_128_encryptor,
+        );
 
         let pass = SData(rpassword::prompt_password("Password: ").expect("Couldn't read password"));
 
-        downloader.init(cliargs.register, pass).expect("There was an error with the server.");
-    }
-    else if cliargs.mode == SENDER_MODE {
+        downloader
+            .init(cliargs.register, pass)
+            .expect("There was an error with the server.");
+    } else if cliargs.mode == SENDER_MODE {
         debug!("Running sender");
         let pass = SData(rpassword::prompt_password("Password: ").expect("Couldn't read password"));
         let addr = match cliargs.address {
@@ -314,17 +323,26 @@ async fn main() {
         };
         let mut c = Sender::new(
             &format!("{}:{}", &addr, cliargs.port),
-            config.get_identifier().expect("No identifier set.").clone(), create_128_encryptor);
+            config.get_identifier().expect("No identifier set.").clone(),
+            create_128_encryptor,
+        );
 
-        if !c.init_send(cliargs.filename, config.get_identifier().expect("Identifier isn't present"), cliargs.identifier, pass).unwrap() {
+        if !c
+            .init_send(
+                cliargs.filename,
+                config.get_identifier().expect("Identifier isn't present"),
+                cliargs.identifier,
+                pass,
+            )
+            .unwrap()
+        {
             return;
         }
 
         if c.send_chunks().is_err() {
             println!("\nCan't reach server.");
         }
-    }
-    else {
+    } else {
         println!("Unknown mode.");
     }
 }

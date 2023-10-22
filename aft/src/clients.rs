@@ -1,25 +1,27 @@
 //! Clients (Receiver and Downloader).
-use std::{
-    net::{TcpStream, TcpListener},
-    io::{self, Write, Read}
-};
-use sha2::{Sha256, Digest};
 use crate::{
-    utils::{Signals, bytes_to_string, FileOperations, get_accept_input, mut_vec, send_identifier},
-    constants::{SIGNAL_LEN, SERVER, CLIENT_RECV,
-        MAX_CHECKSUM_LEN, MAX_METADATA_LEN, MAX_CONTENT_LEN, MAX_IDENTIFIER_LEN}
+    constants::{
+        CLIENT_RECV, MAX_CHECKSUM_LEN, MAX_CONTENT_LEN, MAX_IDENTIFIER_LEN, MAX_METADATA_LEN,
+        SERVER, SIGNAL_LEN,
+    },
+    utils::{bytes_to_string, get_accept_input, mut_vec, send_identifier, FileOperations, Signals},
 };
-use log::{error, info, debug};
 use aft_crypto::{
-    exchange::{X25519Key, PublicKey, KEY_LENGTH},
-    data::{EncAlgo, EncryptorBase, AeadInPlace, AES_GCM_NONCE_SIZE, AES_GCM_TAG_SIZE, SData},
+    data::{AeadInPlace, EncAlgo, EncryptorBase, SData, AES_GCM_NONCE_SIZE, AES_GCM_TAG_SIZE},
+    exchange::{PublicKey, X25519Key, KEY_LENGTH},
+};
+use log::{debug, error, info};
+use sha2::{Digest, Sha256};
+use std::{
+    io::{self, Read, Write},
+    net::{TcpListener, TcpStream},
 };
 
 /// Opens a file.
 ///
 /// Returns the file object, and boolean saying if it was newly created or opened.
 /// Error when there was an error creating or opening a file.
-fn checks_open_file(metadata: &json::JsonValue)  -> io::Result<(FileOperations, bool)> {
+fn checks_open_file(metadata: &json::JsonValue) -> io::Result<(FileOperations, bool)> {
     // Removing "/" at the start, to avoid unwanted behavior. There should be a warning about it at
     // the sender's side.
     let filename_trimmed = metadata["metadata"]["filename"].as_str().unwrap_or("null").trim_start_matches('/');
@@ -42,7 +44,7 @@ pub struct SWriter<T>(pub TcpStream, pub EncAlgo<T>);
 
 impl<T> Write for SWriter<T>
 where
-    T: AeadInPlace
+    T: AeadInPlace,
 {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let enc_buf = self.1.encrypt(buf).expect("Could not encrypt.");
@@ -56,7 +58,7 @@ where
 
 impl<T> Read for SWriter<T>
 where
-    T: AeadInPlace
+    T: AeadInPlace,
 {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let mut read_buf = vec![0; buf.len() + AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE];
@@ -78,7 +80,7 @@ where
 
 impl<T> SWriter<T>
 where
-    T: AeadInPlace
+    T: AeadInPlace,
 {
     /// Better implementation of `write`. Instead of creating a new buffer to encrypt to, it writes
     /// and encrypts "in place".
@@ -114,7 +116,7 @@ where
 
 pub trait BaseSocket<T>
 where
-    T: AeadInPlace
+    T: AeadInPlace,
 {
     /// Returns the writer used in the connection.
     fn get_writer(&self) -> &SWriter<T>;
@@ -156,7 +158,7 @@ where
             // need to handle when `metadata` isn't full.
             match metadata_string.split_once('\0') {
                 None => metadata_string,
-                Some(v) => v.0.to_string()
+                Some(v) => v.0.to_string(),
             }
         }).expect("Couldn't convert metadata buffer to JSON.");
         log::trace!("{}", metadata_json.pretty(2));
@@ -183,7 +185,7 @@ where
         }
 
         // Returns the sender's checksum
-        Ok(content[SIGNAL_LEN..MAX_CHECKSUM_LEN+SIGNAL_LEN].to_vec())
+        Ok(content[SIGNAL_LEN..MAX_CHECKSUM_LEN + SIGNAL_LEN].to_vec())
     }
 
     /// Returns true if checksums are equal, false if they're not.
@@ -230,7 +232,7 @@ where
         if !self.check_checksum(&recv_checksum, &file.checksum())
             && get_accept_input("Keep the file? ").expect("Couldn't read answer") != 'y' {
             FileOperations::rm(&format!(".{}.tmp", filename))?;
-            return Ok(false)
+            return Ok(false);
         }
 
         FileOperations::rename(&format!(".{}.tmp", filename), filename)?;
@@ -258,12 +260,12 @@ pub trait Crypto {
 pub struct Downloader<T> {
     writer: SWriter<T>,
     ident: String,
-    gen_encryptor: fn(&[u8]) -> T
+    gen_encryptor: fn(&[u8]) -> T,
 }
 
 impl<T> BaseSocket<T> for Downloader<T>
 where
-    T: AeadInPlace
+    T: AeadInPlace,
 {
     fn get_writer(&self) -> &SWriter<T> {
         &self.writer
@@ -282,7 +284,7 @@ where
 
 impl<T> Crypto for Downloader<T>
 where
-    T: AeadInPlace
+    T: AeadInPlace,
 {
     fn exchange_pk(&mut self, pk: PublicKey) -> io::Result<PublicKey> {
         let mut other_pk = [0; 32];
@@ -300,7 +302,7 @@ where
 
 impl<T> Downloader<T>
 where
-    T: AeadInPlace
+    T: AeadInPlace,
 {
     /// Constructor. Connects to `remote_ip` automatically.
     pub fn new(remote_ip: &str, ident: String, encryptor_func: fn(&[u8]) -> T) -> Self {
@@ -336,18 +338,22 @@ where
     pub fn init(&mut self, register: bool, pass: SData<String>) -> io::Result<bool> {
         if !self.is_connected_to_server()? {
             error!("Not a server");
-            return Ok(false)
+            return Ok(false);
         }
 
         // Write to the server the client connecting is a receiver
         self.writer.0.write(&[CLIENT_RECV])?;
 
         if !send_identifier(self.ident.as_bytes(), &mut self.writer.0)? {
-            return Ok(false)
+            return Ok(false);
         }
 
         // Send the password to the server
-        let pass_hashed = {let mut sha = Sha256::new(); sha.update(pass.0.as_bytes()); sha.finalize()};
+        let pass_hashed = {
+            let mut sha = Sha256::new();
+            sha.update(pass.0.as_bytes());
+            sha.finalize()
+        };
         self.writer.0.write_all(&pass_hashed)?;
 
         if register {
@@ -355,14 +361,14 @@ where
             self.register()?;
             if self.read_signal_server()? == Signals::Error {
                 info!("Already registered. Aborting");
-                return Ok(false)
+                return Ok(false);
             }
             info!("Registered");
         } else {
             debug!("Requesting to login ...");
             if !self.login()? {
                 error!("Invalid password or identifier");
-                return Ok(false)
+                return Ok(false);
             }
             info!("Passed login");
         }
@@ -371,7 +377,7 @@ where
             info!("Waiting for requests ...");
             if self.read_signal_server()? != Signals::StartFt {
                 error!("Invalid signal.");
-                return Ok(false)
+                return Ok(false);
             }
             // Read the sender's identifier.
             let mut sen_ident_bytes = [0; MAX_IDENTIFIER_LEN];
@@ -382,7 +388,7 @@ where
                 'y' => break,
                 'n' => self.writer.0.write(Signals::Error.as_bytes())?,
                 'b' => self.writer.0.write(Signals::Other.as_bytes())?,
-                _ => panic!("Invalid input.")
+                _ => panic!("Invalid input."),
             };
         }
 
@@ -393,7 +399,7 @@ where
         self.shared_secret()?;
 
         if !self.download()? {
-            return Ok(false)
+            return Ok(false);
         }
 
         info!("Finished successfully");
@@ -403,12 +409,12 @@ where
 
 pub struct Receiver<T> {
     writer: SWriter<T>,
-    gen_encryptor: fn(&[u8]) -> T
+    gen_encryptor: fn(&[u8]) -> T,
 }
 
 impl<T> BaseSocket<T> for Receiver<T>
 where
-    T: AeadInPlace
+    T: AeadInPlace,
 {
     fn get_writer(&self) -> &SWriter<T> {
         &self.writer
@@ -427,7 +433,7 @@ where
 
 impl<T> Crypto for Receiver<T>
 where
-    T: AeadInPlace
+    T: AeadInPlace,
 {
     fn exchange_pk(&mut self, pk: PublicKey) -> io::Result<PublicKey> {
         let mut other_pk = [0; 32];
@@ -445,7 +451,7 @@ where
 
 impl<T> Receiver<T>
 where
-    T: AeadInPlace
+    T: AeadInPlace,
 {
     /// Constructor. Creates a listener on `addr` automatically.
     pub fn new(addr: &str, encryptor_func: fn(&[u8]) -> T) -> Self {
@@ -489,15 +495,14 @@ where
 
         if !self.auth(&pass.0)? {
             error!("Received bad password");
-            return Ok(false)
+            return Ok(false);
         }
 
         if !self.download()? {
-            return Ok(false)
+            return Ok(false);
         }
 
         info!("Finished successfully");
         Ok(true)
     }
 }
-

@@ -1,34 +1,38 @@
 //! Database implementation using PostgreSQL.
-use tokio_postgres::{NoTls, Client};
-use log::{error, trace};
-use crate::constants::{MAX_IDENTIFIER_LEN, MAX_BLOCKS_LEN};
-use tokio;
+use crate::constants::{MAX_BLOCKS_LEN, MAX_IDENTIFIER_LEN};
 use aft_crypto::password_encryption::PHC_STR_LEN;
-
+use log::{error, trace};
+use tokio;
+use tokio_postgres::{Client, NoTls};
 
 pub const DBNAME: &str = "ftdb";
 pub type Result<T> = std::result::Result<T, tokio_postgres::Error>;
 
 pub struct Database {
-    client: Client
+    client: Client,
 }
 
 impl Database {
     /// Creates a new PostgreSQL client, and moves the connection to the background.
     pub async fn new(username: &str, password: &str) -> Result<Self> {
-        let (client, conn) = tokio_postgres::connect(format!("host=localhost user={} password={} dbname={}", username, password, DBNAME).as_str(), NoTls).await?;
+        let (client, conn) = tokio_postgres::connect(
+            format!(
+                "host=localhost user={} password={} dbname={}",
+                username, password, DBNAME
+            )
+            .as_str(),
+            NoTls,
+        )
+        .await?;
         tokio::spawn(async move {
             if let Err(e) = conn.await {
                 error!("Couldn't connect to database: {}", e);
             }
         });
         // TODO
-        if client.is_closed() {
-        }
+        if client.is_closed() {}
 
-        Ok(Database {
-            client
-        })
+        Ok(Database { client })
     }
 
     /// Creates a new table in the following template:
@@ -44,7 +48,7 @@ impl Database {
             blocks varchar({})
             )", MAX_IDENTIFIER_LEN, PHC_STR_LEN, MAX_BLOCKS_LEN), &[]).await {
             Ok(_) => (),
-            Err(e) => panic!("{:?}", e)
+            Err(e) => panic!("{:?}", e),
         }
         Ok(())
     }
@@ -72,7 +76,7 @@ impl Database {
         if !blocks.is_empty() {
             for block in blocks.split(',') {
                 if block == blocked_ip {
-                    return Ok(true)
+                    return Ok(true);
                 }
             }
         }
