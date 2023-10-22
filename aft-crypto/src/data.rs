@@ -3,6 +3,7 @@ pub use aes_gcm::{
     aead::{generic_array::GenericArray, rand_core::RngCore, AeadInPlace, KeyInit, OsRng},
     Aes128Gcm, Aes256Gcm, Nonce
 };
+use zeroize::Zeroize;
 
 pub type Result<T> = core::result::Result<T, EncryptionErrors>;
 pub type AesGcm128Enc = EncAlgo::<Aes128Gcm>;
@@ -116,6 +117,15 @@ where
 {
     fn get_encryptor(&self) -> &CiAlgo {
         &self.encryptor
+    }
+}
+
+/// Safe Data. Zeros when dropped.
+pub struct SData<T: Zeroize>(pub T);
+
+impl<T: Zeroize> Drop for SData<T> {
+    fn drop(&mut self) {
+        self.0.zeroize();
     }
 }
 

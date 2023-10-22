@@ -14,7 +14,8 @@ use tokio::sync::RwLock;
 use crate::database::Database;
 use aft_crypto::{
     password_encryption::create_hash,
-    exchange::KEY_LENGTH, data::{AES_GCM_NONCE_SIZE, AES_GCM_TAG_SIZE}};
+    exchange::KEY_LENGTH, data::{AES_GCM_NONCE_SIZE, AES_GCM_TAG_SIZE},
+    data::SData};
 
 
 pub const UNFINISHED_FILE_MSG: &str = "undone";
@@ -53,13 +54,13 @@ pub struct Server {
 
 impl Server {
     /// Creates a new Server struct.
-    pub async fn new(port: u16, pguser: &str, pgpass: &str) -> Self {
-        if pguser.is_empty() || pgpass.is_empty() {
+    pub async fn new(port: u16, pguser: &str, pgpass: SData<String>) -> Self {
+        if pguser.is_empty() || pgpass.0.is_empty() {
             // TODO
         }
         Server {
             address: SocketAddr::new(new_ip!(""), port),
-            db: Database::new(pguser, pgpass).await.expect("Couldn't connect to database.")
+            db: Database::new(pguser, &pgpass.0).await.expect("Couldn't connect to database.")
         }
     }
 
@@ -147,7 +148,7 @@ impl Server {
         let mut pass = [0; SHA_256_LEN];
         socket.read(&mut pass).await?;
 
-        let pass_phc = match create_hash(&mut pass, Some(salt)) {
+        let pass_phc = match create_hash(&pass, Some(salt)) {
             Err(e) => {
                 error!("Couldn't hash password. {}", e);
                 return Ok(String::new());

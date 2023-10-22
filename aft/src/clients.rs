@@ -8,7 +8,7 @@ use crate::constants::{SIGNAL_LEN, SERVER, CLIENT_RECV,
 use log::{error, info, debug};
 use aft_crypto::{
     exchange::{X25519Key, PublicKey, KEY_LENGTH},
-    data::{EncAlgo, EncryptorBase, AeadInPlace, AES_GCM_NONCE_SIZE, AES_GCM_TAG_SIZE},
+    data::{EncAlgo, EncryptorBase, AeadInPlace, AES_GCM_NONCE_SIZE, AES_GCM_TAG_SIZE, SData},
 };
 
 /// Opens a file.
@@ -329,12 +329,13 @@ where
     }
 
     /// The main method when connecting to a server. Handles the transferring process.
-    pub fn init(&mut self, register: bool, pass: &mut String) -> io::Result<bool> {
+    pub fn init(&mut self, register: bool, pass: SData<String>) -> io::Result<bool> {
         if !self.is_connected_to_server()? {
             error!("Not a server");
             return Ok(false)
         }
 
+        // Write to the server the client connecting is a receiver
         self.writer.0.write(&[CLIENT_RECV])?;
 
         if !send_identifier(self.ident.as_bytes(), &mut self.writer.0)? {
@@ -342,7 +343,7 @@ where
         }
 
         // Send the password to the server
-        let pass_hashed = {let mut sha = Sha256::new(); sha.update(pass); sha.finalize()};
+        let pass_hashed = {let mut sha = Sha256::new(); sha.update(pass.0.as_bytes()); sha.finalize()};
         self.writer.0.write_all(&pass_hashed)?;
 
         if register {
@@ -460,13 +461,13 @@ where
         debug!("Authenticating ...");
 
         // Sha256 is 256 bits => 256 / 8 => 32
-        let mut pass = vec![0; 32];
-        self.writer.read_ext(&mut pass)?;
+        let mut pass = SData(vec![0; 32]);
+        self.writer.read_ext(&mut pass.0)?;
 
         let mut sha = Sha256::new();
         sha.update(correct_pass);
 
-        if pass == sha.finalize().as_slice() {
+        if pass.0 == sha.finalize().as_slice() {
             self.writer.write_ext(mut_vec!(Signals::OK.as_bytes()))?;
             Ok(true)
         } else {
@@ -476,13 +477,13 @@ where
     }
 
     /// The main function for receiving in P2P mode (sender -> receiver).
-    pub fn receive(&mut self, pass: &str) -> io::Result<bool> {
+    pub fn receive(&mut self, pass: SData<String>) -> io::Result<bool> {
         // Write to the sender that its connecting to a receiver
         self.writer.0.write(&[CLIENT_RECV])?;
 
         self.shared_secret()?;
 
-        if !self.auth(pass)? {
+        if !self.auth(&pass.0)? {
             error!("Received bad password");
             return Ok(false)
         }

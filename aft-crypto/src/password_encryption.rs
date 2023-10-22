@@ -6,7 +6,6 @@ pub use scrypt::{
     },
     Scrypt
 };
-pub use zeroize::Zeroize;
 
 /// Salt size of password (not in Base64) (excludes 0)
 pub const SALT_SIZE: usize = 16;
@@ -40,7 +39,7 @@ pub const PHC_STR_LEN: usize = 1
 /// Creates a new [`scrypt`] deriven hash.
 ///
 /// Make sure `salt` isn't Base64 encoded.
-pub fn create_hash(password: &mut [u8], salt: Option<&[u8]>) -> Result<PasswordHashString, scrypt::password_hash::Error> {
+pub fn create_hash(password: &[u8], salt: Option<&[u8]>) -> Result<PasswordHashString, scrypt::password_hash::Error> {
     let salt = match salt {
         None => SaltString::generate(&mut OsRng),
         Some(s) => SaltString::encode_b64(s)?
@@ -48,7 +47,6 @@ pub fn create_hash(password: &mut [u8], salt: Option<&[u8]>) -> Result<PasswordH
     let hash = Scrypt.hash_password(password, &salt)?.to_string();
     let passhash = PasswordHashString::new(&hash)?;
 
-    password.zeroize();
     Ok(passhash)
 }
 

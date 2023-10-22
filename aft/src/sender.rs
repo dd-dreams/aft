@@ -13,7 +13,7 @@ use crate::errors;
 use crate::constants::{MAX_METADATA_LEN, MAX_CONTENT_LEN, SERVER, CLIENT_SEND, MAX_CHECKSUM_LEN, SIGNAL_LEN};
 use crate::clients::{BaseSocket, Crypto, SWriter};
 use aft_crypto::{exchange::{PublicKey, KEY_LENGTH},
-    data::{EncAlgo, AeadInPlace}};
+    data::{EncAlgo, AeadInPlace, SData}};
 
 fn update_pb(curr_bars_count: &mut u8, pb_length: u64, bytes_transferred: u64) {
     *curr_bars_count = (bytes_transferred / (pb_length + 1)).try_into().unwrap_or(0);
@@ -175,7 +175,7 @@ where
     ///
     /// Returns false if something went wrong (such as the identifier is too long, or when the
     /// receiver isn't online).
-    pub fn init_send(&mut self, path: &str, sen_ident: &str, receiver_identifier: Option<&str>, pass: &str) -> io::Result<bool> {
+    pub fn init_send(&mut self, path: &str, sen_ident: &str, receiver_identifier: Option<&str>, pass: SData<String>) -> io::Result<bool> {
         let file_path = Path::new(path);
 
         if !basic_file_checks(file_path)? {
@@ -222,7 +222,7 @@ where
             self.shared_secret()?;
         } else {
             self.shared_secret()?;
-            if !self.auth(pass)? {
+            if !self.auth(&pass.0)? {
                 error!("Incorrect password.");
                 return Ok(false)
             }

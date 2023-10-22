@@ -16,7 +16,7 @@ use env_logger::{self, fmt::Color};
 use log::{debug, error, Level};
 use config::Config;
 use std::env;
-use aft_crypto::{data::{Aes128Gcm, create_128_encryptor},
+use aft_crypto::{data::{Aes128Gcm, create_128_encryptor, SData},
                  bip39};
 
 const SENDER_MODE: u8 = 1;
@@ -271,17 +271,17 @@ async fn main() {
         let pass = env::var("PGPASSWORD").expect("Invalid PGPASSWORD environment variable.");
         let user = env::var("PGUSER").expect("Invalid PGUSER environment variable.");
         server::init(
-            Server::new(cliargs.port, &user, &pass
+            Server::new(cliargs.port, &user, SData(pass)
                 ).await).await.unwrap();
     }
     else if cliargs.mode == RECEIVER_MODE {
-        let pass = rpassword::prompt_password("Password: ").expect("Couldn't read password");
+        let pass = SData(rpassword::prompt_password("Password: ").expect("Couldn't read password"));
         println!("Code: {}", generate_code_from_pub_ip());
         debug!("Running receiver");
 
         let mut receiver = clients::Receiver::new(&format!("0.0.0.0:{}", cliargs.port), create_128_encryptor);
 
-        receiver.receive(&pass).expect("Something went wrong");
+        receiver.receive(pass).expect("Something went wrong");
     }
     else if cliargs.mode == DOWNLOAD_MODE {
         debug!("Running downloader");
@@ -294,14 +294,13 @@ async fn main() {
             &format!("{}:{}", cliargs.address.expect("No address specified"), cliargs.port),
             identifier.unwrap().to_string(), create_128_encryptor);
 
-        let mut pass = rpassword::prompt_password("Password: ").expect("Couldn't read password");
+        let pass = SData(rpassword::prompt_password("Password: ").expect("Couldn't read password"));
 
-        downloader.init(cliargs.register, &mut pass).expect("There was an error with the server.");
+        downloader.init(cliargs.register, pass).expect("There was an error with the server.");
     }
     else if cliargs.mode == SENDER_MODE {
-        // if config.get_identifier().expect("No identifier provided").len() 0
         debug!("Running sender");
-        let pass = rpassword::prompt_password("Password: ").expect("Couldn't read password");
+        let pass = SData(rpassword::prompt_password("Password: ").expect("Couldn't read password"));
         let addr = match cliargs.address {
             Some(ip) => ip.to_string(),
             None => {
@@ -313,7 +312,7 @@ async fn main() {
             &format!("{}:{}", &addr, cliargs.port),
             config.get_identifier().expect("No identifier set.").clone(), create_128_encryptor);
 
-        if !c.init_send(cliargs.filename, config.get_identifier().expect("Identifier isn't present"), cliargs.identifier, &pass).unwrap() {
+        if !c.init_send(cliargs.filename, config.get_identifier().expect("Identifier isn't present"), cliargs.identifier, pass).unwrap() {
             return;
         }
 
