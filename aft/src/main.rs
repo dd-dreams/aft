@@ -10,14 +10,18 @@ pub mod clients;
 
 use server::Server;
 use sender::Sender;
-use std::env::args as args_fn;
-use std::io::Write;
+use std::{
+    env::args as args_fn,
+    io::Write,
+    env
+};
 use env_logger::{self, fmt::Color};
 use log::{debug, error, Level};
 use config::Config;
-use std::env;
-use aft_crypto::{data::{Aes128Gcm, create_128_encryptor, SData},
-                 bip39};
+use aft_crypto::{
+    data::{Aes128Gcm, create_128_encryptor, SData},
+    bip39
+};
 
 const SENDER_MODE: u8 = 1;
 const RECEIVER_MODE: u8 = 2;

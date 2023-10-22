@@ -2,10 +2,13 @@
 use std::{fs::File,
           io,
           io::prelude::*,
-          path::Path};
+          path::Path
+};
 use log::error;
-use crate::utils::error_other;
-use crate::errors::ErrorsConfig;
+use crate::{
+    utils::error_other,
+    errors::ErrorsConfig
+};
 
 const VERBOSE_OPTION: &str = "verbose";
 const IDENTIFIER_OPTION: &str = "identifier";

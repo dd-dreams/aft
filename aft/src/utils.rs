@@ -1,9 +1,13 @@
 /// Module for various utilities used in other modules.
-use std::fs::{self, File};
-use std::io::prelude::*;
-use std::io::SeekFrom;
-use std::io;
-use std::net::{TcpStream, Ipv4Addr};
+use std::{
+    fs::{self, File},
+    io::{
+        self,
+        prelude::*,
+        SeekFrom
+    },
+    net::{TcpStream, Ipv4Addr}
+};
 use log::{info, debug, error};
 use sha2::{Sha256, Digest};
 use crate::constants::MAX_IDENTIFIER_LEN;

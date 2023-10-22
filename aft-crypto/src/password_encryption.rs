@@ -2,7 +2,11 @@
 pub use scrypt::{
     password_hash::{
         rand_core::OsRng,
-        PasswordHasher, SaltString, PasswordHash, PasswordVerifier, PasswordHashString,
+        PasswordHasher,
+        SaltString,
+        PasswordHash,
+        PasswordVerifier,
+        PasswordHashString
     },
     Scrypt
 };

@@ -1,6 +1,12 @@
 //! Data encryption with AEAD (Authenticated encryption).
 pub use aes_gcm::{
-    aead::{generic_array::GenericArray, rand_core::RngCore, AeadInPlace, KeyInit, OsRng},
+    aead::{
+        generic_array::GenericArray,
+        rand_core::RngCore,
+        AeadInPlace,
+        KeyInit,
+        OsRng
+    },
     Aes128Gcm, Aes256Gcm, Nonce
 };
 use zeroize::Zeroize;

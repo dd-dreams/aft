@@ -1,18 +1,20 @@
 //! Handling sender.
-use std::{io,
+use std::{io::{self, Write, Read},
     net::{TcpStream, ToSocketAddrs},
-    path::Path
+    path::Path,
+    time::SystemTime
 };
-use std::io::{Write, Read};
-use std::time::SystemTime;
 use json;
 use log::{error, warn, info, debug};
 use sha2::{Sha256, Digest};
-use crate::utils::{FileOperations, error_other, progress_bar, Signals, mut_vec, download_speed, send_identifier};
-use crate::errors;
-use crate::constants::{MAX_METADATA_LEN, MAX_CONTENT_LEN, SERVER, CLIENT_SEND, MAX_CHECKSUM_LEN, SIGNAL_LEN};
-use crate::clients::{BaseSocket, Crypto, SWriter};
-use aft_crypto::{exchange::{PublicKey, KEY_LENGTH},
+use crate::{
+    utils::{FileOperations, error_other, progress_bar, Signals, mut_vec, download_speed, send_identifier},
+    errors,
+    constants::{MAX_METADATA_LEN, MAX_CONTENT_LEN, SERVER, CLIENT_SEND, MAX_CHECKSUM_LEN, SIGNAL_LEN},
+    clients::{BaseSocket, Crypto, SWriter}
+};
+use aft_crypto::{
+    exchange::{PublicKey, KEY_LENGTH},
     data::{EncAlgo, AeadInPlace, SData}};
 
 fn update_pb(curr_bars_count: &mut u8, pb_length: u64, bytes_transferred: u64) {

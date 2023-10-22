@@ -1,10 +1,14 @@
 //! Clients (Receiver and Downloader).
-use std::net::{TcpStream, TcpListener};
-use std::io::{self, Write, Read};
+use std::{
+    net::{TcpStream, TcpListener},
+    io::{self, Write, Read}
+};
 use sha2::{Sha256, Digest};
-use crate::utils::{Signals, bytes_to_string, FileOperations, get_accept_input, mut_vec, send_identifier};
-use crate::constants::{SIGNAL_LEN, SERVER, CLIENT_RECV,
-    MAX_CHECKSUM_LEN, MAX_METADATA_LEN, MAX_CONTENT_LEN, MAX_IDENTIFIER_LEN};
+use crate::{
+    utils::{Signals, bytes_to_string, FileOperations, get_accept_input, mut_vec, send_identifier},
+    constants::{SIGNAL_LEN, SERVER, CLIENT_RECV,
+        MAX_CHECKSUM_LEN, MAX_METADATA_LEN, MAX_CONTENT_LEN, MAX_IDENTIFIER_LEN}
+};
 use log::{error, info, debug};
 use aft_crypto::{
     exchange::{X25519Key, PublicKey, KEY_LENGTH},

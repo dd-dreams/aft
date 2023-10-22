@@ -1,22 +1,31 @@
 //! Handling middle server functionality.
-use tokio::net::{TcpListener, TcpStream};
-use tokio::io::{AsyncWriteExt, AsyncReadExt};
-use std::{io, net::SocketAddr};
-use crate::utils::{new_ip,
-                   bytes_to_string,
-                   Signals};
-use crate::constants::{MAX_CONTENT_LEN, MAX_METADATA_LEN, MAX_IDENTIFIER_LEN,
-    SERVER, CLIENT_RECV, SIGNAL_LEN, SHA_256_LEN};
+use tokio::{
+    net::{TcpListener, TcpStream},
+    io::{AsyncWriteExt, AsyncReadExt},
+};
+use std::{
+    io,
+    net::SocketAddr,
+    collections::HashMap,
+    sync::Arc
+};
+use crate::{
+    utils::{
+        new_ip,
+        bytes_to_string,
+        Signals},
+    constants::{
+        MAX_CONTENT_LEN, MAX_METADATA_LEN, MAX_IDENTIFIER_LEN,
+        SERVER, CLIENT_RECV, SIGNAL_LEN, SHA_256_LEN},
+    database::Database
+};
 use log::{info, error, debug};
-use std::collections::HashMap;
-use std::sync::Arc;
 use tokio::sync::RwLock;
-use crate::database::Database;
 use aft_crypto::{
     password_encryption::create_hash,
-    exchange::KEY_LENGTH, data::{AES_GCM_NONCE_SIZE, AES_GCM_TAG_SIZE},
-    data::SData};
-
+    exchange::KEY_LENGTH,
+    data::{AES_GCM_NONCE_SIZE, AES_GCM_TAG_SIZE, SData},
+};
 
 pub const UNFINISHED_FILE_MSG: &str = "undone";
 const NONCE_TAG_LEN: usize = AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE;

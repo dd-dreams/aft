@@ -4,7 +4,6 @@
 use crate::bip39;
 use rand::{Rng, thread_rng};
 
-
 pub const DELIMITER: char = '-';
 
 // Linux and macOS wordlist path. Windows doesn't have a native one.
