@@ -1,4 +1,4 @@
-# <p align="center">aft<br>advanced file transferring program<br>![GitHub repo size](https://img.shields.io/github/repo-size/dd-dreams/aft)</p>
+# <p align="center">aft<br>advanced file transferring program<br>![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/dd-dreams/aft/.github%2Fworkflows%2Frust.yml)
 
 aft (Advanced File Transfer) is a minimal and secure tool for sharing files between two parties easily and efficiently. Works in Windows, Linux and macOS.
 
@@ -12,7 +12,7 @@ This program is currently in beta stage.
 - Peer to Peer mode.
 - Middle server mode.
 - Blocking senders.
-- No IP lookup.
+- No IP self-lookup.
 
 # Modes
 There are a few modes to use with this program:
@@ -41,7 +41,8 @@ Options:
     -i --identifier IDENTIFIER  Identifier to find the receiver. Used only when its not P2P.
     -v --verbose VERBOSE        Verbose level. Default is 1 (warnings only). Range 1-3.
     -c --config CONFIG          Config location.
-    -r --register REGISTER      Register.
+    -r --register               Register.
+    -v --version                Show version.
 ```
 
 # Comparisons
