@@ -197,7 +197,10 @@ async fn main() {
         "receiver" => RECEIVER_MODE,
         "download" => DOWNLOAD_MODE,
         "server" => SERVER_MODE,
-        _ => {println!("Invalid mode."); return;}
+        _ => {
+            println!("Invalid mode.");
+            return;
+        }
     });
 
     if !cliargs.is_server_receiver() && args.len() < 3 {
