@@ -4,3 +4,7 @@ members = [
     "aft-crypto"
 ]
 resolver = "2"
+
+[profile.release]
+lto = true
+strip = "debuginfo"
