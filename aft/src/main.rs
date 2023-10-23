@@ -14,10 +14,10 @@ use aft_crypto::{
 };
 use config::Config;
 use env_logger::{self, fmt::Color};
-use log::{debug, error, Level};
+use log::{info, error, Level};
 use sender::Sender;
 use server::Server;
-use std::{env, env::args as args_fn, io::Write};
+use std::{env::{self, args as args_fn}, io::Write};
 
 const SENDER_MODE: u8 = 1;
 const RECEIVER_MODE: u8 = 2;
@@ -115,9 +115,9 @@ impl<'a> CliArgs<'a> {
 /// Builds the logger.
 fn build_logger(level: &str) {
     let env = env_logger::Env::default().default_filter_or(level);
-    env_logger::Builder::from_env(env)
-        .target(env_logger::Target::Stdout)
-        .format(|buf, record| {
+    let mut binding = env_logger::Builder::from_env(env);
+    let builder = if ["trace", "debug"].contains(&level) {
+        binding.format(|buf, record | {
             let mut style = buf.style();
             let level = record.level();
             if level == Level::Warn {
@@ -127,9 +127,23 @@ fn build_logger(level: &str) {
             } else {
                 style.set_color(Color::Green);
             }
-            writeln!(buf, "[{} {}] {}", buf.timestamp(), style.value(record.level()), record.args())
+            writeln!(buf, "[{} {}] {}", buf.timestamp(), style.value(level), record.args())
         })
-        .init();
+    } else {
+        binding.format(|buf, record| {
+            let mut style = buf.style();
+            let level = record.level();
+            if [Level::Warn, Level::Error].contains(&level) {
+                style.set_color(Color::Red);
+                writeln!(buf, "{} {}", style.value("[!]"), record.args())
+            } else {
+                style.set_color(Color::Green);
+                writeln!(buf, "{} {}", style.value("[*]"), record.args())
+            }
+        })
+    }.target(env_logger::Target::Stdout);
+
+    builder.init();
 }
 
 /// Generates code-phrase from an IP address. This only supports IPv4 addresses.
@@ -272,7 +286,7 @@ async fn main() {
     build_logger(verbose_mode);
 
     if cliargs.mode == SERVER_MODE {
-        debug!("Running server");
+        info!("Running server");
         // Not recommended using `PGPASSWORD` env var for security reasons (some OS's allow
         // non-root users to see env vars of other users). Recommended only when this program is
         // sandboxed in some way (docker or other).
@@ -285,14 +299,14 @@ async fn main() {
     } else if cliargs.mode == RECEIVER_MODE {
         let pass = SData(rpassword::prompt_password("Password: ").expect("Couldn't read password"));
         println!("Code: {}", generate_code_from_pub_ip());
-        debug!("Running receiver");
+        info!("Running receiver");
 
         let mut receiver =
             clients::Receiver::new(&format!("0.0.0.0:{}", cliargs.port), create_128_encryptor);
 
         receiver.receive(pass).expect("Something went wrong");
     } else if cliargs.mode == DOWNLOAD_MODE {
-        debug!("Running downloader");
+        info!("Running downloader");
         let identifier = config.get_identifier();
         if identifier.is_none() {
             error!("Identifier not set.");
@@ -314,7 +328,7 @@ async fn main() {
             .init(cliargs.register, pass)
             .expect("There was an error with the server.");
     } else if cliargs.mode == SENDER_MODE {
-        debug!("Running sender");
+        info!("Running sender");
         let pass = SData(rpassword::prompt_password("Password: ").expect("Couldn't read password"));
         let addr = match cliargs.address {
             Some(ip) => ip.to_string(),

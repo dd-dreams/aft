@@ -457,6 +457,7 @@ where
     pub fn new(addr: &str, encryptor_func: fn(&[u8]) -> T) -> Self {
         let listener = TcpListener::bind(addr).expect("Couldn't bind to address");
         let (socket, _) = listener.accept().expect("Couldn't accept connection");
+        info!("Connected to sender");
 
         Receiver {
             writer: SWriter(socket, EncAlgo::<T>::new(&[0u8; KEY_LENGTH], encryptor_func)),
@@ -468,7 +469,7 @@ where
     ///
     /// Returns true if the password received from the sender is the correct password, else false.
     pub fn auth(&mut self, correct_pass: &str) -> io::Result<bool> {
-        debug!("Authenticating ...");
+        info!("Authenticating ...");
 
         // Sha256 is 256 bits => 256 / 8 => 32
         let mut pass = SData(vec![0; 32]);
