@@ -181,7 +181,7 @@ fn get_ip_from_code(codes: &str) -> String {
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = args_fn().collect();
-    if args.len() == 1 || args.len() > 11 {
+    if args.len() == 1 || args.len() > 9 {
         println!("{}\n\n{}\n\n{}\n{}", DESCR_MSG, USAGE_MSG, POSITIONAL_ARGS_MSG, OPTIONS_ARGS_MSG);
         return;
     }
@@ -255,7 +255,7 @@ async fn main() {
                     return;
                 }
             }
-        } else if cliargs.is_sender() {
+        } else if cliargs.is_sender() && i == args.len() - 1 {
             cliargs.set_filename(args.last().expect("No filename provided."));
         } else {
             println!("Unknown argument {}", arg);
