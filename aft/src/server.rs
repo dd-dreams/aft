@@ -59,9 +59,6 @@ pub struct Server {
 impl Server {
     /// Creates a new Server struct.
     pub async fn new(port: u16, pguser: &str, pgpass: SData<String>) -> Self {
-        if pguser.is_empty() || pgpass.0.is_empty() {
-            // TODO
-        }
         Server {
             address: SocketAddr::new(new_ip!(""), port),
             db: Database::new(pguser, &pgpass.0).await.expect("Couldn't connect to database.")
