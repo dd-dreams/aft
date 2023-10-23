@@ -24,14 +24,17 @@ const RECEIVER_MODE: u8 = 2;
 const DOWNLOAD_MODE: u8 = 3;
 const SERVER_MODE: u8 = 4;
 const DEFAULT_PORT: u16 = 1122;
-const HELP_MSG: &str = "aft - file transfer done easily";
+const DESCR_MSG: &str = "aft - file transfer done easily";
 const USAGE_MSG: &str = "Usage:
     aft sender [--address <address>] [--port <port>] <filename>
     aft receiver [-p <port>]
     aft download -a <address> [-p <port>]
     aft server [-p <port>]
     aft <mode> [options ...]";
-const OPTIONS_MSG: &str = "Options:
+const POSITIONAL_ARGS_MSG: &str =  "Positional arguments:
+    mode
+    ";
+const OPTIONS_ARGS_MSG: &str = "Optional arguments:
     -a --address ADDRESS        Address to connect to.
     -p --port PORT              Port to host the server on.
     -i --identifier IDENTIFIER  Identifier to find the receiver. Used only when its not P2P.
@@ -179,7 +182,7 @@ fn get_ip_from_code(codes: &str) -> String {
 async fn main() {
     let args: Vec<String> = args_fn().collect();
     if args.len() == 1 || args.len() > 11 {
-        println!("{}\n\n{}\n\n{}", HELP_MSG, USAGE_MSG, OPTIONS_MSG);
+        println!("{}\n\n{}\n\n{}\n{}", DESCR_MSG, USAGE_MSG, POSITIONAL_ARGS_MSG, OPTIONS_ARGS_MSG);
         return;
     }
 

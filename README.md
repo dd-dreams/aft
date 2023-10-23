@@ -35,7 +35,10 @@ Usage:
     aft server [-p <port>]
     aft <mode> [options ...]
 
-Options:
+Positional arguments:
+    mode
+
+Optional arguments:
     -a --address ADDRESS        Address to connect to.
     -p --port PORT              Port to host the server on.
     -i --identifier IDENTIFIER  Identifier to find the receiver. Used only when its not P2P.
