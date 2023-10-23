@@ -19,7 +19,6 @@ enum Options {
 pub struct Config {
     verbose: Options,
     identifier: Options,
-    mode: Options,
 }
 
 impl Config {
@@ -91,7 +90,6 @@ impl Config {
         Ok(Config {
             verbose,
             identifier,
-            mode,
         })
     }
 
@@ -122,14 +120,6 @@ impl Config {
             None
         }
     }
-
-    pub fn get_mode(&self) -> u8 {
-        if let Options::DefaultMode(val) = self.mode {
-            val
-        } else {
-            1
-        }
-    }
 }
 
 impl Default for Config {
@@ -137,7 +127,6 @@ impl Default for Config {
         Config {
             verbose: Options::None,
             identifier: Options::None,
-            mode: Options::None,
         }
     }
 }

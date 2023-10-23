@@ -26,12 +26,12 @@ const SERVER_MODE: u8 = 4;
 const DEFAULT_PORT: u16 = 1122;
 const HELP_MSG: &str = "aft - file transfer done easily";
 const USAGE_MSG: &str = "Usage:
-    aft --mode sender [--address <address>] [--port <port>] <filename>
-    aft -m receiver [-p <port>]
-    aft -m download -a <address> [-p <port>]
-    aft -m server [-p <port>]";
+    aft sender [--address <address>] [--port <port>] <filename>
+    aft receiver [-p <port>]
+    aft download -a <address> [-p <port>]
+    aft server [-p <port>]
+    aft <mode> [options ...]";
 const OPTIONS_MSG: &str = "Options:
-    -m --mode MODE              Run as `sender`, `server`, `receiver` or `download`.
     -a --address ADDRESS        Address to connect to.
     -p --port PORT              Port to host the server on.
     -i --identifier IDENTIFIER  Identifier to find the receiver. Used only when its not P2P.
@@ -64,7 +64,7 @@ impl<'a> CliArgs<'a> {
     }
 
     pub fn is_server_receiver(&self) -> bool {
-        ![SENDER_MODE, DOWNLOAD_MODE].contains(&self.mode)
+        [SERVER_MODE, RECEIVER_MODE].contains(&self.mode)
     }
 
     pub fn is_sender(&self) -> bool {
@@ -101,7 +101,7 @@ impl<'a> CliArgs<'a> {
     }
 
     pub fn set_filename(&mut self, filename: &'a str) -> bool {
-        if [SERVER_MODE, DOWNLOAD_MODE, RECEIVER_MODE].contains(&self.mode) {
+        if [SERVER_MODE, DOWNLOAD_MODE, RECEIVER_MODE].contains(&self.mode) || filename.is_empty() {
             return false;
         }
         self.filename = filename;
@@ -187,79 +187,74 @@ async fn main() {
         Config::new(&format!("{}/../.config", env!("CARGO_MANIFEST_DIR"))).unwrap_or_default();
     let mut verbose_mode = config.get_verbose();
 
-    let mut cliargs = CliArgs::new(config.get_mode());
-    // 1 to skip executable name
-    let mut index = 1;
-
-    if args.len() - 1 == 1 && ["--version", "-v"].contains(&args[1].as_str()) {
+    if args.len() - 1 == 1 && ["--version"].contains(&args[1].as_str()) {
         println!("aft v{}", env!("CARGO_PKG_VERSION"));
         return;
     }
 
-    while index < args.len() {
-        // The filename.
-        let arg = &args[index];
-        if ["--mode", "-m"].contains(&arg.to_lowercase().as_str()) {
-            cliargs = CliArgs::new(match args[index + 1].to_lowercase().as_str() {
-                "sender" => SENDER_MODE,
-                "receiver" => RECEIVER_MODE,
-                "download" => DOWNLOAD_MODE,
-                "server" => SERVER_MODE,
-                _ => {println!("Invalid mode."); return;}
-            })
-        } else if ["--address", "-a"].contains(&arg.to_lowercase().as_str()) {
+    let mut cliargs = CliArgs::new(match args[1].to_lowercase().as_str() {
+        "sender" => SENDER_MODE,
+        "receiver" => RECEIVER_MODE,
+        "download" => DOWNLOAD_MODE,
+        "server" => SERVER_MODE,
+        _ => {println!("Invalid mode."); return;}
+    });
+
+    if !cliargs.is_server_receiver() && args.len() < 3 {
+        println!("Not enough arguments provided.");
+        return;
+    }
+
+    for i in (2..args.len()).step_by(2) {
+        let arg = &args[i];
+        if i == args.len() - 2 && ["--register", "-r"].contains(&arg.as_str()) {
+            if cliargs.is_sender() {
+                println!("Can't use {} argument when mode==sender", arg);
+                return;
+            }
+            cliargs.register = true;
+        } else if ["--address", "-a"].contains(&arg.as_str()) {
             if cliargs.is_server_receiver() {
                 println!("Can't use {} argument when mode==server,receiver", arg);
                 return;
             }
             // TODO: add check for IP
-            cliargs.set_address(&args[index + 1]);
-        } else if ["--port", "-p"].contains(&arg.to_lowercase().as_str()) {
-            cliargs.set_port(if let Ok(v) = args[index + 1].parse() {
+            cliargs.set_address(&args[i + 1]);
+        } else if ["--port", "-p"].contains(&arg.as_str()) {
+            cliargs.set_port(if let Ok(v) = args[i + 1].parse() {
                 v
             } else {
                 println!("Not a port.");
                 return;
             });
-        } else if ["--identifier", "-i"].contains(&arg.to_lowercase().as_str()) {
+        } else if ["--identifier", "-i"].contains(&arg.as_str()) {
             if cliargs.is_server_receiver() {
                 println!("Can't use {} argument when mode==server,receiver", arg);
                 return;
             }
-            cliargs.set_identifier(&args[index + 1]);
-        } else if ["--verbose", "-v"].contains(&arg.to_lowercase().as_str()) {
-            cliargs.set_verbose(if let Ok(v) = args[index + 1].parse() {
+            cliargs.set_identifier(&args[i + 1]);
+        } else if ["--verbose", "-v"].contains(&arg.as_str()) {
+            cliargs.set_verbose(if let Ok(v) = args[i + 1].parse() {
                 verbose_mode = v;
                 v
             } else {
                 println!("Invalid verbose level.");
                 return;
             });
-        } else if ["--register", "-r"].contains(&arg.to_lowercase().as_str()) {
-            if cliargs.is_sender() {
-                println!("Can't use {} argument when mode==sender", arg);
-                return;
-            }
-            cliargs.register = true;
-            index -= 1;
-        } else if ["--config", "-c"].contains(&arg.to_lowercase().as_str()) {
-            config = match Config::new(&args[index + 1]) {
+        } else if ["--config", "-c"].contains(&arg.as_str()) {
+            config = match Config::new(&args[i + 1]) {
                 Ok(v) => v,
                 Err(_) => {
                     println!("Invalid config location");
                     return;
                 }
             }
-        } else if index + 1 == args.len() {
-            if !cliargs.set_filename(&args[index]) {
-                println!("A filename is only passed when using sender mode");
-                return;
-            }
+        } else if cliargs.is_sender() {
+            cliargs.set_filename(args.last().expect("No filename provided."));
         } else {
             println!("Unknown argument {}", arg);
             return;
         }
-        index += 2;
     }
 
     let verbose_mode = match verbose_mode {
