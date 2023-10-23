@@ -29,13 +29,13 @@ Allows using a middle server instead of two devices connecting to each other dir
 aft - file transfer done easily
 
 Usage:
-    aft --mode sender [--address <address>] [--port <port>] <filename>
-    aft -m receiver [-p <port>]
-    aft -m download -a <address> [-p <port>]
-    aft -m server [-p <port>]
+    aft sender [--address <address>] [--port <port>] <filename>
+    aft receiver [-p <port>]
+    aft download -a <address> [-p <port>]
+    aft server [-p <port>]
+    aft <mode> [options ...]
 
 Options:
-    -m --mode MODE              Run as `sender`, `server`, `receiver` or `download`.
     -a --address ADDRESS        Address to connect to.
     -p --port PORT              Port to host the server on.
     -i --identifier IDENTIFIER  Identifier to find the receiver. Used only when its not P2P.
