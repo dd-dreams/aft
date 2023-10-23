@@ -20,5 +20,5 @@ jobs:
         run: cargo build --release --verbose
       - uses: actions/upload-artifact@v3.1.3
         with:
-          name: aft
+          name: aft-ubuntu
           path: target/release/aft
