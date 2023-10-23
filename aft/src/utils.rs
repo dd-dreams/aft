@@ -288,7 +288,7 @@ pub fn send_identifier(ident: &[u8], socket: &mut TcpStream) -> io::Result<bool>
         return Ok(false);
     }
     // Write the identifier of this receiver
-    socket.write(ident)?;
+    socket.write_all(ident)?;
 
     Ok(true)
 }

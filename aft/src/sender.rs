@@ -113,7 +113,7 @@ where
 
     /// Signals to the endpoint to start the file transfer process.
     fn signal_start(&mut self) -> io::Result<()> {
-        self.get_mut_writer().0.write(Signals::StartFt.as_bytes())?;
+        self.get_mut_writer().0.write_all(Signals::StartFt.as_bytes())?;
         Ok(())
     }
 
@@ -125,7 +125,7 @@ where
     /// Returns false when the identifier is too long.
     fn if_server(&mut self, rece_ident: &str, sen_ident: &str) -> io::Result<bool> {
         // Notify the server that this sender is sending data
-        self.writer.0.write(&[CLIENT_SEND])?;
+        self.writer.0.write_all(&[CLIENT_SEND])?;
         // Write the receiver's identifier
         Ok(send_identifier(rece_ident.as_bytes(), &mut self.writer.0)?
             // Write the sender's identifier

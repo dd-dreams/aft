@@ -71,12 +71,12 @@ impl Server {
     async fn read_both_pks(sender: &mut TcpStream, receiver: &mut TcpStream) -> io::Result<()> {
         // Write to the sender the receiver's public key
         let mut receiver_pk = [0u8; KEY_LENGTH];
-        receiver.read(&mut receiver_pk).await?;
+        receiver.read_exact(&mut receiver_pk).await?;
         sender.write_all(&receiver_pk).await?;
 
         // Write to the receiver the sender's public key
         let mut sender_pk = [0u8; KEY_LENGTH];
-        sender.read(&mut sender_pk).await?;
+        sender.read_exact(&mut sender_pk).await?;
         receiver.write_all(&sender_pk).await?;
 
         Ok(())
@@ -90,11 +90,11 @@ impl Server {
             // If the receiver is not online
             if !Self::is_ident_exists(clients.clone(), recv_identifier).await {
                 info!("{} is not online", recv_identifier);
-                sender.write(Signals::Error.as_bytes()).await?;
+                sender.write_all(Signals::Error.as_bytes()).await?;
                 return Ok(StatusSender::Null);
             } else {
                 // The receiver is online
-                sender.write(Signals::OK.as_bytes()).await?;
+                sender.write_all(Signals::OK.as_bytes()).await?;
             }
 
             receiver = clients.write().await.remove(recv_identifier).unwrap();
@@ -102,14 +102,14 @@ impl Server {
 
         // Read signal from the sender
         let signal = read_signal(sender).await?;
-        receiver.write(signal.as_bytes()).await?;
+        receiver.write_all(signal.as_bytes()).await?;
         // Write the sender's identifier
-        receiver.write(sen_identifier.as_bytes()).await?;
+        receiver.write_all(sen_identifier.as_bytes()).await?;
 
         let acceptance = read_signal(&mut receiver).await?;
 
         // Write to sender if the receiver accepted the file transfer
-        sender.write(acceptance.as_bytes()).await?;
+        sender.write_all(acceptance.as_bytes()).await?;
 
         match acceptance {
             Signals::Error => {
@@ -153,7 +153,7 @@ impl Server {
 
     async fn read_and_hash_pass(socket: &mut TcpStream, salt: &[u8]) -> io::Result<String> {
         let mut pass = [0; SHA_256_LEN];
-        socket.read(&mut pass).await?;
+        socket.read_exact(&mut pass).await?;
 
         let pass_phc = match create_hash(&pass, Some(salt)) {
             Err(e) => {
@@ -177,12 +177,12 @@ impl Server {
         debug!("{} requests to register", identifier);
         if self.is_registered_db(identifier).await {
             debug!("{} is already registered.", &identifier);
-            socket.write(Signals::Error.as_bytes()).await?;
+            socket.write_all(Signals::Error.as_bytes()).await?;
         } else {
             debug!("Registering {}", identifier);
             self.register_ident_db(identifier, pass_phc).await;
             debug!("{} is now registered", &identifier);
-            socket.write(Signals::OK.as_bytes()).await?;
+            socket.write_all(Signals::OK.as_bytes()).await?;
         }
 
         Ok(())
@@ -193,15 +193,15 @@ impl Server {
         if !self.is_registered_db(identifier).await {
             info!("{} does not exist", identifier);
             // Invalid identifier
-            socket.write(Signals::Error.as_bytes()).await?;
+            socket.write_all(Signals::Error.as_bytes()).await?;
         } else {
             let db_phc_string = self.db.get_scryptd_ident(identifier).await.expect("Database error.");
             if pass_phc == db_phc_string {
-                socket.write(Signals::OK.as_bytes()).await?;
+                socket.write_all(Signals::OK.as_bytes()).await?;
             } else {
                 // Invalid password
                 error!("{}: invalid password", identifier);
-                socket.write(Signals::Error.as_bytes()).await?;
+                socket.write_all(Signals::Error.as_bytes()).await?;
             }
         }
 
@@ -258,7 +258,7 @@ pub async fn init(mut server: Server) -> io::Result<()> {
                         _ => {
                             debug!("Invalid signal: {}", signal.as_str());
                             error_connection!(
-                                socket.write(Signals::Unknown.as_bytes()).await,
+                                socket.write_all(Signals::Unknown.as_bytes()).await,
                                 return
                             );
                         }
@@ -276,14 +276,14 @@ pub async fn init(mut server: Server) -> io::Result<()> {
                         error_connection!(server.read().await.handle_login(&mut socket, &identifier, &pass_phc).await, return);
                     } else {
                         debug!("Invalid signal: {}", signal.as_str());
-                        error_connection!(socket.write(Signals::Error.as_bytes()).await, return);
+                        error_connection!(socket.write_all(Signals::Error.as_bytes()).await, return);
                     }
 
                     // Remove the current connected one
                     if let Some(mut sock) = hashmap_writable.remove(&identifier) {
                         error_connection!(sock.shutdown().await, return);
                     } else {
-                        error_connection!(socket.write(Signals::Error.as_bytes()).await, return);
+                        error_connection!(socket.write_all(Signals::Error.as_bytes()).await, return);
                     }
                     // Add the new one
                     hashmap_writable.insert(identifier, socket);
@@ -304,7 +304,7 @@ pub async fn init(mut server: Server) -> io::Result<()> {
                 if server.read().await.db.check_block(
                     &recv_identifier, &error_connection!(socket.peer_addr(), return).ip().to_string()).await.expect("Database error.") {
                     // Signaling to the sender that he is blocked
-                    error_connection!(socket.write(Signals::Error.as_bytes()).await, return);
+                    error_connection!(socket.write_all(Signals::Error.as_bytes()).await, return);
                     return;
                 }
 

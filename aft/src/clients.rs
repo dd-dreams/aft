@@ -89,7 +89,7 @@ where
     pub fn write_ext(&mut self, buf: &mut Vec<u8>) -> io::Result<()> {
         // Automatically adds the tag and the nonce.
         self.1.encrypt_in_place(buf).expect("Could not encrypt.");
-        self.0.write(buf)?;
+        self.0.write_all(buf)?;
 
         buf.truncate(buf.len() - AES_GCM_TAG_SIZE - AES_GCM_NONCE_SIZE);
         Ok(())
@@ -139,7 +139,7 @@ where
     /// Returns the signal.
     fn read_signal_server(&mut self) -> io::Result<Signals> {
         let mut signal = vec![0u8; SIGNAL_LEN];
-        self.get_mut_writer().0.read(&mut signal)?;
+        self.get_mut_writer().0.read_exact(&mut signal)?;
         let signal = bytes_to_string(&signal);
 
         Ok(signal.as_str().into())
@@ -324,7 +324,7 @@ where
 
     /// Sends a signal to register.
     fn register(&mut self) -> io::Result<()> {
-        self.writer.0.write(Signals::Register.as_bytes())?;
+        self.writer.0.write_all(Signals::Register.as_bytes())?;
         Ok(())
     }
 
@@ -342,7 +342,7 @@ where
         }
 
         // Write to the server the client connecting is a receiver
-        self.writer.0.write(&[CLIENT_RECV])?;
+        self.writer.0.write_all(&[CLIENT_RECV])?;
 
         if !send_identifier(self.ident.as_bytes(), &mut self.writer.0)? {
             return Ok(false);
@@ -393,7 +393,7 @@ where
         }
 
         // Write that the receiver accepts the request
-        self.writer.0.write(Signals::OK.as_bytes())?;
+        self.writer.0.write_all(Signals::OK.as_bytes())?;
 
         // Exchange secret key with the sender
         self.shared_secret()?;
@@ -489,7 +489,7 @@ where
     /// The main function for receiving in P2P mode (sender -> receiver).
     pub fn receive(&mut self, pass: SData<String>) -> io::Result<bool> {
         // Write to the sender that its connecting to a receiver
-        self.writer.0.write(&[CLIENT_RECV])?;
+        self.writer.0.write_all(&[CLIENT_RECV])?;
 
         self.shared_secret()?;
 
