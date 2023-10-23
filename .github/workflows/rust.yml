@@ -3,9 +3,15 @@ name: Rust
 on:
   push:
     branches: [ "master" ]
+    paths-ignore:
+      - "LICENSE"
+      - "README.md"
+      - "SECURITY.MD"
+      - ".gitignore"
+      - ".config"
   pull_request:
     branches: [ "master" ]
-
+    
 env:
   CARGO_TERM_COLOR: always
 
