@@ -20,13 +20,12 @@ use tokio::{
     net::{TcpListener, TcpStream},
 };
 
-pub const UNFINISHED_FILE_MSG: &str = "undone";
 const NONCE_TAG_LEN: usize = AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE;
 
-pub type Identifier = String;
-pub type ClientsHashMap = HashMap<Identifier, TcpStream>;
+type Identifier = String;
+type ClientsHashMap = HashMap<Identifier, TcpStream>;
 /// Moveable type between threads.
-pub type MovT<T> = Arc<RwLock<T>>;
+type MovT<T> = Arc<RwLock<T>>;
 
 macro_rules! error_connection {
     ($comm:expr) => {

@@ -6,7 +6,7 @@ use rand::{thread_rng, Rng};
 
 pub const DELIMITER: char = '-';
 
-// Linux and macOS wordlist path. Windows doesn't have a native one.
+/// Linux and macOS wordlist path. Windows doesn't have a native one.
 const UNIX_WORDLIST: &str = "/usr/share/dict/words";
 
 /// Generate a unique passphrase using a wordlist.
