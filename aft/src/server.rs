@@ -42,112 +42,98 @@ macro_rules! error_connection {
     };
 }
 
-/// Represents a server, which negotiates between clients or client to server.
-pub struct Server {
-    address: SocketAddr,
+async fn read_both_pks(sender: &mut TcpStream, receiver: &mut TcpStream) -> io::Result<()> {
+    // Write to the sender the receiver's public key
+    let mut receiver_pk = [0u8; KEY_LENGTH];
+    receiver.read_exact(&mut receiver_pk).await?;
+    sender.write_all(&receiver_pk).await?;
+
+    // Write to the receiver the sender's public key
+    let mut sender_pk = [0u8; KEY_LENGTH];
+    sender.read_exact(&mut sender_pk).await?;
+    receiver.write_all(&sender_pk).await?;
+
+    Ok(())
 }
 
-impl Server {
-    /// Creates a new Server struct.
-    pub async fn new(port: u16) -> Self {
-        Server {
-            address: SocketAddr::new(new_ip!(""), port),
-        }
-    }
-
-    async fn read_both_pks(sender: &mut TcpStream, receiver: &mut TcpStream) -> io::Result<()> {
-        // Write to the sender the receiver's public key
-        let mut receiver_pk = [0u8; KEY_LENGTH];
-        receiver.read_exact(&mut receiver_pk).await?;
-        sender.write_all(&receiver_pk).await?;
-
-        // Write to the receiver the sender's public key
-        let mut sender_pk = [0u8; KEY_LENGTH];
-        sender.read_exact(&mut sender_pk).await?;
-        receiver.write_all(&sender_pk).await?;
-
-        Ok(())
-    }
-
-    async fn handle_sender(sender: &mut TcpStream, clients: MovT<ClientsHashMap>, recv_identifier: &str, sen_identifier: &str) ->
-        io::Result<bool>
+async fn handle_sender(sender: &mut TcpStream, clients: MovT<ClientsHashMap>, recv_identifier: &str, sen_identifier: &str) ->
+    io::Result<bool>
+{
+    let mut receiver: TcpStream;
     {
-        let mut receiver: TcpStream;
-        {
-            // If the receiver is not online
-            if !Self::is_ident_exists(clients.clone(), recv_identifier).await {
-                info!("{} is not online", recv_identifier);
-                sender.write_all(Signals::Error.as_bytes()).await?;
-                return Ok(false);
-            } else {
-                // The receiver is online
-                sender.write_all(Signals::OK.as_bytes()).await?;
-            }
-
-            receiver = clients.write().await.remove(recv_identifier).unwrap();
+        // If the receiver is not online
+        if !is_ident_exists(clients.clone(), recv_identifier).await {
+            info!("{} is not online", recv_identifier);
+            sender.write_all(Signals::Error.as_bytes()).await?;
+            return Ok(false);
+        } else {
+            // The receiver is online
+            sender.write_all(Signals::OK.as_bytes()).await?;
         }
 
-        // Read signal from the sender
-        let signal = read_signal(sender).await?;
-        receiver.write_all(signal.as_bytes()).await?;
+        receiver = clients.write().await.remove(recv_identifier).unwrap();
+    }
 
-        let hashed_sen_ip = {
-            let mut sha = Sha256::new();
-            sha.update(sender.peer_addr()?.ip().to_string());
-            sha.finalize()
-        };
-        // Write the sender's identifier
-        receiver.write_all(sen_identifier.as_bytes()).await?;
-        // Write to the sender the hashed IP of the sender's, so he can continue blocking
-        // him.
-        receiver.write_all(&hashed_sen_ip).await?;
+    // Read signal from the sender
+    let signal = read_signal(sender).await?;
+    receiver.write_all(signal.as_bytes()).await?;
 
-        let acceptance = read_signal(&mut receiver).await?;
+    let hashed_sen_ip = {
+        let mut sha = Sha256::new();
+        sha.update(sender.peer_addr()?.ip().to_string());
+        sha.finalize()
+    };
+    // Write the sender's identifier
+    receiver.write_all(sen_identifier.as_bytes()).await?;
+    // Write to the sender the hashed IP of the sender's, so he can continue blocking
+    // him.
+    receiver.write_all(&hashed_sen_ip).await?;
 
-        // Write to sender if the receiver accepted the file transfer
-        sender.write_all(acceptance.as_bytes()).await?;
+    let acceptance = read_signal(&mut receiver).await?;
 
-        match acceptance {
-            Signals::Error => {
-                info!("{} rejected {}", recv_identifier, sen_identifier);
-                // Keep the receiver listening
-                clients.write().await.insert(recv_identifier.to_string(), receiver);
-                return Ok(false)
-            },
-            Signals::OK => (),
-            s => {
-                error!("Invalid signal: {}", s);
-                return Ok(false);
-            }
+    // Write to sender if the receiver accepted the file transfer
+    sender.write_all(acceptance.as_bytes()).await?;
+
+    match acceptance {
+        Signals::Error => {
+            info!("{} rejected {}", recv_identifier, sen_identifier);
+            // Keep the receiver listening
+            clients.write().await.insert(recv_identifier.to_string(), receiver);
+            return Ok(false)
+        },
+        Signals::OK => (),
+        s => {
+            error!("Invalid signal: {}", s);
+            return Ok(false);
         }
-
-        Server::read_both_pks(sender, &mut receiver).await?;
-
-        process_proxied(sender, &mut receiver).await?;
-
-        Ok(true)
     }
 
-    pub async fn is_ident_exists(clients: MovT<ClientsHashMap>, identifier: &str) -> bool {
-        if clients.read().await.contains_key(identifier) {
-            return true;
-        }
-        false
-    }
+    read_both_pks(sender, &mut receiver).await?;
 
-    async fn read_identifier(socket: &mut TcpStream) -> io::Result<String> {
-        let mut identifier = [0; MAX_IDENTIFIER_LEN];
-        socket.read_exact(&mut identifier).await?;
+    process_proxied(sender, &mut receiver).await?;
 
-        Ok(bytes_to_string(&identifier))
+    Ok(true)
+}
+
+pub async fn is_ident_exists(clients: MovT<ClientsHashMap>, identifier: &str) -> bool {
+    if clients.read().await.contains_key(identifier) {
+        return true;
     }
+    false
+}
+
+async fn read_identifier(socket: &mut TcpStream) -> io::Result<String> {
+    let mut identifier = [0; MAX_IDENTIFIER_LEN];
+    socket.read_exact(&mut identifier).await?;
+
+    Ok(bytes_to_string(&identifier))
 }
 
 /// Initializes the server and starts receiving connections.
 ///
 /// Error when there is a connection error.
-pub async fn init(server: Server) -> io::Result<()> {
-    let listener = TcpListener::bind(server.address.to_string()).await?;
+pub async fn init(address: &str) -> io::Result<()> {
+    let listener = TcpListener::bind(address).await?;
     let hashmap_clients = Arc::new(RwLock::new(ClientsHashMap::new()));
 
     info!("Listening ...");
@@ -163,7 +149,7 @@ pub async fn init(server: Server) -> io::Result<()> {
             let command = error_connection!(socket.read_u8().await, return);
             if command == CLIENT_RECV {
                 let identifier =
-                    error_connection!(Server::read_identifier(&mut socket).await, return);
+                    error_connection!(read_identifier(&mut socket).await, return);
                 if identifier.is_empty() {
                     return;
                 }
@@ -187,16 +173,16 @@ pub async fn init(server: Server) -> io::Result<()> {
             else {
                 // Read the receiver's identifier
                 let recv_identifier =
-                    error_connection!(Server::read_identifier(&mut socket).await, return);
+                    error_connection!(read_identifier(&mut socket).await, return);
                 // Read the sender's identifier
                 let sen_identifier =
-                    error_connection!(Server::read_identifier(&mut socket).await, return);
+                    error_connection!(read_identifier(&mut socket).await, return);
                 if recv_identifier.is_empty() || sen_identifier.is_empty() {
                     return;
                 }
 
                 error_connection!(
-                    Server::handle_sender(&mut socket, clients, &recv_identifier, &sen_identifier).await);
+                    handle_sender(&mut socket, clients, &recv_identifier, &sen_identifier).await);
             }
         }
 

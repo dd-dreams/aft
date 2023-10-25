@@ -15,7 +15,6 @@ use config::Config;
 use env_logger::{self, fmt::Color};
 use log::{error, info, Level};
 use sender::Sender;
-use server::Server;
 use std::{env::args as args_fn, io::Write};
 
 const SENDER_MODE: u8 = 1;
@@ -277,7 +276,7 @@ async fn main() {
 
     if cliargs.mode == SERVER_MODE {
         info!("Running server");
-        server::init(Server::new(cliargs.port).await).await.unwrap();
+        server::init(&format!("0.0.0.0:{}", cliargs.port)).await.unwrap();
     } else if cliargs.mode == RECEIVER_MODE {
         let pass = SData(rpassword::prompt_password("Password: ").expect("Couldn't read password"));
         println!("Code: {}", generate_code_from_pub_ip());
