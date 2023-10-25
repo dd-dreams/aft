@@ -93,20 +93,6 @@ impl Signals {
     }
 }
 
-/// Creates a new IPv4. Returns 127.0.0.1 if $ip is empty or corrupted. Else, returns IpAddr::V4
-/// struct with $ip.
-macro_rules! new_ip {
-    ($ip:expr) => {
-        if $ip.len() == 0 || $ip.len() != 4 {
-            std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0))
-        }
-        // $ip in this case, needs to be a Vec<usize>.
-        else {
-            $ip.parse().expect("Wrong IPv4 format.")
-        }
-    }
-} pub(crate) use new_ip;
-
 /// Macro to shorten "other" errors.
 macro_rules! error_other {
     ($E:expr) => {std::io::Error::new(io::ErrorKind::Other, $E)}

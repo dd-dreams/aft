@@ -3,7 +3,7 @@ use crate::{
     constants::{
         CLIENT_RECV, MAX_CONTENT_LEN, MAX_IDENTIFIER_LEN, MAX_METADATA_LEN, SERVER, SIGNAL_LEN,
     },
-    utils::{bytes_to_string, new_ip, Signals},
+    utils::{bytes_to_string, Signals},
 };
 use aft_crypto::{
     data::{AES_GCM_NONCE_SIZE, AES_GCM_TAG_SIZE},
@@ -11,7 +11,7 @@ use aft_crypto::{
 };
 use log::{debug, error, info};
 use sha2::{Digest, Sha256};
-use std::{collections::HashMap, io, net::SocketAddr, sync::Arc};
+use std::{collections::HashMap, io, sync::Arc};
 use tokio::sync::RwLock;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
