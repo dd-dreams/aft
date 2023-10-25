@@ -7,8 +7,6 @@ target/
 
 *.txt
 *.tmp
-# ignore database directory
-**/ftdb
 
 # project's files
 .config
