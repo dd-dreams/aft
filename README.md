@@ -2,6 +2,8 @@
 
 aft (Advanced File Transfer) is a minimal and secure tool for sharing files between two parties easily and efficiently. Works in Windows, Linux and macOS.
 
+## Notice: you're currently on the branch with the PostgreSQL database. This branch is not really maintained because there is no really any reason to use a database (in this program), but I'm keeping it anyway.
+
 This program is currently in beta stage.
 
 # Features
