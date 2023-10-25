@@ -2,7 +2,6 @@
 pub mod clients;
 pub mod config;
 pub mod constants;
-pub mod database;
 pub mod errors;
 pub mod sender;
 pub mod server;
@@ -14,10 +13,10 @@ use aft_crypto::{
 };
 use config::Config;
 use env_logger::{self, fmt::Color};
-use log::{info, error, Level};
+use log::{error, info, Level};
 use sender::Sender;
 use server::Server;
-use std::{env::{self, args as args_fn}, io::Write};
+use std::{env::args as args_fn, io::Write};
 
 const SENDER_MODE: u8 = 1;
 const RECEIVER_MODE: u8 = 2;
@@ -31,7 +30,7 @@ const USAGE_MSG: &str = "Usage:
     aft download -a <address> [-p <port>]
     aft server [-p <port>]
     aft <mode> [options ...]";
-const POSITIONAL_ARGS_MSG: &str =  "Positional arguments:
+const POSITIONAL_ARGS_MSG: &str = "Positional arguments:
     mode
     ";
 const OPTIONS_ARGS_MSG: &str = "Optional arguments:
@@ -40,7 +39,6 @@ const OPTIONS_ARGS_MSG: &str = "Optional arguments:
     -i --identifier IDENTIFIER  Identifier to find the receiver. Used only when its not P2P.
     -v --verbose VERBOSE        Verbose level. Default is 1 (warnings only). Range 1-3.
     -c --config CONFIG          Config location.
-    -r --register               Register.
     -v --version                Show version.";
 
 struct CliArgs<'a> {
@@ -50,7 +48,6 @@ struct CliArgs<'a> {
     identifier: Option<&'a str>,
     verbose: u8,
     filename: &'a str,
-    pub register: bool,
 }
 
 impl<'a> CliArgs<'a> {
@@ -62,7 +59,6 @@ impl<'a> CliArgs<'a> {
             identifier: None,
             verbose: 1,
             filename: "",
-            register: false,
         }
     }
 
@@ -117,7 +113,7 @@ fn build_logger(level: &str) {
     let env = env_logger::Env::default().default_filter_or(level);
     let mut binding = env_logger::Builder::from_env(env);
     let builder = if ["trace", "debug"].contains(&level) {
-        binding.format(|buf, record | {
+        binding.format(|buf, record| {
             let mut style = buf.style();
             let level = record.level();
             if level == Level::Warn {
@@ -227,13 +223,7 @@ async fn main() {
 
     for i in (2..args.len()).step_by(2) {
         let arg = &args[i];
-        if i == args.len() - 2 && ["--register", "-r"].contains(&arg.as_str()) {
-            if cliargs.is_sender() {
-                println!("Can't use {} argument when mode==sender", arg);
-                return;
-            }
-            cliargs.register = true;
-        } else if ["--address", "-a"].contains(&arg.as_str()) {
+        if ["--address", "-a"].contains(&arg.as_str()) {
             if cliargs.is_server_receiver() {
                 println!("Can't use {} argument when mode==server,receiver", arg);
                 return;
@@ -287,15 +277,7 @@ async fn main() {
 
     if cliargs.mode == SERVER_MODE {
         info!("Running server");
-        // Not recommended using `PGPASSWORD` env var for security reasons (some OS's allow
-        // non-root users to see env vars of other users). Recommended only when this program is
-        // sandboxed in some way (docker or other).
-        // TODO?
-        let pass = env::var("PGPASSWORD").expect("Invalid PGPASSWORD environment variable.");
-        let user = env::var("PGUSER").expect("Invalid PGUSER environment variable.");
-        server::init(Server::new(cliargs.port, &user, SData(pass)).await)
-            .await
-            .unwrap();
+        server::init(Server::new(cliargs.port).await).await.unwrap();
     } else if cliargs.mode == RECEIVER_MODE {
         let pass = SData(rpassword::prompt_password("Password: ").expect("Couldn't read password"));
         println!("Code: {}", generate_code_from_pub_ip());
@@ -312,6 +294,7 @@ async fn main() {
             error!("Identifier not set.");
             return;
         }
+
         let mut downloader = clients::Downloader::<Aes128Gcm>::new(
             &format!(
                 "{}:{}",
@@ -322,11 +305,7 @@ async fn main() {
             create_128_encryptor,
         );
 
-        let pass = SData(rpassword::prompt_password("Password: ").expect("Couldn't read password"));
-
-        downloader
-            .init(cliargs.register, pass)
-            .expect("There was an error with the server.");
+        downloader.init().expect("There was an error with the server.");
     } else if cliargs.mode == SENDER_MODE {
         info!("Running sender");
         let pass = SData(rpassword::prompt_password("Password: ").expect("Couldn't read password"));
@@ -343,22 +322,11 @@ async fn main() {
             create_128_encryptor,
         );
 
-        if !c
-            .init_send(
-                cliargs.filename,
-                config.get_identifier().expect("Identifier isn't present"),
-                cliargs.identifier,
-                pass,
-            )
-            .unwrap()
-        {
-            return;
-        }
-
-        if c.send_chunks().is_err() {
-            println!("\nCan't reach server.");
+        if c.init_send(cliargs.filename, config.get_identifier().expect("Identifier isn't present"),
+                cliargs.identifier, pass,).unwrap() && c.send_chunks().is_err() {
+            error!("\nCan't reach server.");
         }
     } else {
-        println!("Unknown mode.");
+        error!("Unknown mode.");
     }
 }

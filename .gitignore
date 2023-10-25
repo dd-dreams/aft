@@ -9,3 +9,7 @@ target/
 *.tmp
 # ignore database directory
 **/ftdb
+
+# project's files
+.config
+.blocks

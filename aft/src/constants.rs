@@ -29,3 +29,5 @@ pub const SERVER: u8 = 2;
 pub const SIGNAL_LEN: usize = 6;
 /// SHA-256 hash length in bytes.
 pub const SHA_256_LEN: usize = 32;
+/// Blocked user filename.
+pub const BLOCKED_FILENAME: &str = ".blocks";

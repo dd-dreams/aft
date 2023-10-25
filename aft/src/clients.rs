@@ -1,8 +1,8 @@
 //! Clients (Receiver and Downloader).
 use crate::{
     constants::{
-        CLIENT_RECV, MAX_CHECKSUM_LEN, MAX_CONTENT_LEN, MAX_IDENTIFIER_LEN, MAX_METADATA_LEN,
-        SERVER, SIGNAL_LEN,
+        BLOCKED_FILENAME, CLIENT_RECV, MAX_CHECKSUM_LEN, MAX_CONTENT_LEN, MAX_IDENTIFIER_LEN,
+        MAX_METADATA_LEN, SERVER, SHA_256_LEN, SIGNAL_LEN,
     },
     utils::{bytes_to_string, get_accept_input, mut_vec, send_identifier, FileOperations, Signals},
 };
@@ -41,6 +41,10 @@ fn checks_open_file(metadata: &json::JsonValue) -> io::Result<(FileOperations, b
 
 /// A safe writer. Acts like a normal writer only that it encrypts the connection.
 pub struct SWriter<T>(pub TcpStream, pub EncAlgo<T>);
+
+struct UserBlocks {
+    file: FileOperations,
+}
 
 impl<T> Write for SWriter<T>
 where
@@ -110,6 +114,38 @@ where
         // This method automatically removes the tag
         self.1.decrypt_in_place(buf, &nonce).expect("Could not decrypt.");
 
+        Ok(())
+    }
+}
+
+impl UserBlocks {
+    /// Constructor.
+    pub fn new(path: &str) -> io::Result<Self> {
+        Ok(UserBlocks {
+            file: FileOperations::new(path)?,
+        })
+    }
+
+    /// Checks if an IP is blocked.
+    pub fn check_block(&mut self, ip: &str) -> io::Result<bool> {
+        let mut content = Vec::new();
+        self.file.seek_start(0)?;
+        self.file.file.read_to_end(&mut content)?;
+
+        let ip_bytes = ip.as_bytes();
+
+        // Split at newline
+        for line in content.split(|i| i == &10u8) {
+            if line == ip_bytes {
+                return Ok(true);
+            }
+        }
+
+        Ok(false)
+    }
+
+    pub fn add_block(&mut self, ip: &str) -> io::Result<()> {
+        self.file.write(format!("{}\n", ip).as_bytes())?;
         Ok(())
     }
 }
@@ -261,6 +297,7 @@ pub struct Downloader<T> {
     writer: SWriter<T>,
     ident: String,
     gen_encryptor: fn(&[u8]) -> T,
+    blocks: UserBlocks,
 }
 
 impl<T> BaseSocket<T> for Downloader<T>
@@ -309,7 +346,8 @@ where
         let socket = TcpStream::connect(remote_ip).expect("Couldn't connect.");
         Downloader { ident,
             writer: SWriter(socket, EncAlgo::<T>::new(&[0u8; KEY_LENGTH], encryptor_func)),
-            gen_encryptor: encryptor_func
+            gen_encryptor: encryptor_func,
+            blocks: UserBlocks::new(BLOCKED_FILENAME).expect("Couldn't open blocked users file."),
         }
     }
 
@@ -322,20 +360,8 @@ where
         Ok(server_or_client[0] == SERVER)
     }
 
-    /// Sends a signal to register.
-    fn register(&mut self) -> io::Result<()> {
-        self.writer.0.write_all(Signals::Register.as_bytes())?;
-        Ok(())
-    }
-
-    /// Sends a signal to login.
-    fn login(&mut self) -> io::Result<bool> {
-        self.writer.0.write_all(Signals::Login.as_bytes())?;
-        Ok(self.read_signal_server()? == Signals::OK)
-    }
-
     /// The main method when connecting to a server. Handles the transferring process.
-    pub fn init(&mut self, register: bool, pass: SData<String>) -> io::Result<bool> {
+    pub fn init(&mut self) -> io::Result<bool> {
         if !self.is_connected_to_server()? {
             error!("Not a server");
             return Ok(false);
@@ -348,48 +374,48 @@ where
             return Ok(false);
         }
 
-        // Send the password to the server
-        let pass_hashed = {
-            let mut sha = Sha256::new();
-            sha.update(pass.0.as_bytes());
-            sha.finalize()
-        };
-        self.writer.0.write_all(&pass_hashed)?;
-
-        if register {
-            info!("Requesting to register ...");
-            self.register()?;
-            if self.read_signal_server()? == Signals::Error {
-                info!("Already registered. Aborting");
-                return Ok(false);
-            }
-            info!("Registered");
-        } else {
-            debug!("Requesting to login ...");
-            if !self.login()? {
-                error!("Invalid password or identifier");
-                return Ok(false);
-            }
-            info!("Passed login");
-        }
-
+        info!("Waiting for requests ...");
         loop {
-            info!("Waiting for requests ...");
-            if self.read_signal_server()? != Signals::StartFt {
-                error!("Invalid signal.");
-                return Ok(false);
+
+            loop {
+                match self.read_signal_server()? {
+                    Signals::StartFt => break,
+                    // Connectivity check
+                    Signals::Other => self.writer.0.write_all(&[1])?,
+                    Signals::Error => {
+                        info!("This identifier is not available.");
+                        return Ok(false);
+                    }
+                    s => panic!("Invalid signal when reading signal from server. {}", s),
+                }
             }
-            // Read the sender's identifier.
+
+            // Read the sender's identifier
             let mut sen_ident_bytes = [0; MAX_IDENTIFIER_LEN];
             self.writer.0.read_exact(&mut sen_ident_bytes)?;
             let sen_ident = &bytes_to_string(&sen_ident_bytes);
 
-            match get_accept_input(&format!("{} wants to send you a file (y/n/b): ", sen_ident))? {
-                'y' => break,
-                'n' => self.writer.0.write(Signals::Error.as_bytes())?,
-                'b' => self.writer.0.write(Signals::Other.as_bytes())?,
-                _ => panic!("Invalid input."),
-            };
+            // Read the sender's hashed IP
+            let mut sen_hashed_ip_bytes = [0; SHA_256_LEN];
+            self.writer.0.read_exact(&mut sen_hashed_ip_bytes)?;
+            let sen_hashed_ip = &bytes_to_string(&sen_hashed_ip_bytes);
+
+            // If this IP isn't blocked
+            if !self.blocks.check_block(sen_hashed_ip)? {
+                match get_accept_input(&format!("{} wants to send you a file (y/n/b): ", sen_ident))? {
+                    // Yes
+                    'y' => break,
+                    // No
+                    'n' => (),
+                    // Block
+                    'b' => self.blocks.add_block(sen_hashed_ip)?,
+                    // Invalid input
+                    _ => panic!("Invalid input"),
+                };
+            }
+
+            // If the receiver rejected/blocked him
+            self.writer.0.write_all(Signals::Error.as_bytes())?;
         }
 
         // Write that the receiver accepts the request

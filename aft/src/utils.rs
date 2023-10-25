@@ -155,8 +155,8 @@ impl FileOperations {
     ///
     /// Error when there is an IO error.
     pub fn open_w_file(filename: &str) -> io::Result<File> {
-        debug!("Opening file in write mode: {}", filename);
-        let file = File::options().write(true).read(true).open(filename)?;
+        debug!("Opening/Creating file in write mode: {}", filename);
+        let file = File::options().write(true).read(true).create(true).open(filename)?;
         Ok(file)
     }
 
