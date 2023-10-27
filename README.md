@@ -19,7 +19,7 @@ There are a few modes to use with this program:
 ## Peer to Peer
 The sender is directly connected to the receiver, and the transfer process is happening directly.
 ## Relay
-Allows using a middle relay instead of two devices connecting to each other directly. It allows a few benefits such as:
+Allows using a relay instead of two devices connecting to each other directly. It allows a few benefits such as:
 - No port forward needed on the receiver's end.
 - No direct contact between the receiver and the sender.
 - Better privacy - no IP sharing.
