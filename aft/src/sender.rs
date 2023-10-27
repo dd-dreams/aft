@@ -2,7 +2,7 @@
 use crate::{
     clients::{BaseSocket, Crypto, SWriter},
     constants::{
-        CLIENT_SEND, MAX_CHECKSUM_LEN, MAX_CONTENT_LEN, MAX_METADATA_LEN, SERVER, SIGNAL_LEN,
+        CLIENT_SEND, MAX_CHECKSUM_LEN, MAX_CONTENT_LEN, MAX_METADATA_LEN, RELAY, SIGNAL_LEN,
     },
     errors,
     utils::{
@@ -117,14 +117,14 @@ where
         Ok(())
     }
 
-    /// If the sender is connecting to a server (a proxy).
+    /// If the sender is connecting to a relay.
     ///
     /// # Errors
     /// When there is a connection error.
     ///
     /// Returns false when the identifier is too long.
-    fn if_server(&mut self, rece_ident: &str, sen_ident: &str) -> io::Result<bool> {
-        // Notify the server that this sender is sending data
+    fn if_relay(&mut self, rece_ident: &str, sen_ident: &str) -> io::Result<bool> {
+        // Notify the relay that this client is a sender
         self.writer.0.write_all(&[CLIENT_SEND])?;
         // Write the receiver's identifier
         Ok(send_identifier(rece_ident.as_bytes(), &mut self.writer.0)?
@@ -197,17 +197,17 @@ where
 
         self.file_path = path.to_string();
 
-        let mut server_or_receiver = [0u8; 1];
-        self.writer.0.read_exact(&mut server_or_receiver)?;
-        if server_or_receiver[0] == SERVER {
-            debug!("Connected to a server");
+        let mut relay_or_receiver = [0u8; 1];
+        self.writer.0.read_exact(&mut relay_or_receiver)?;
+        if relay_or_receiver[0] == RELAY {
+            debug!("Connected to a relay");
             if let Some(ident) = receiver_identifier {
                 // If the identifier is too long
-                if !self.if_server(ident, sen_ident)? {
+                if !self.if_relay(ident, sen_ident)? {
                     return Ok(false);
                 }
                 // Read signal
-                match self.read_signal_server()? {
+                match self.read_signal_relay()? {
                     Signals::OK => (),
                     Signals::Error => {
                         error!("Receiver is not online.");
@@ -226,7 +226,7 @@ where
             // Write to the endpoint to start the transfer
             self.signal_start()?;
 
-            match self.read_signal_server()? {
+            match self.read_signal_relay()? {
                 Signals::OK => info!("Reciever accepted."),
                 Signals::Error => {
                     error!("Receiver rejected.");

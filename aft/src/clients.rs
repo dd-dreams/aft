@@ -2,7 +2,7 @@
 use crate::{
     constants::{
         BLOCKED_FILENAME, CLIENT_RECV, MAX_CHECKSUM_LEN, MAX_CONTENT_LEN, MAX_IDENTIFIER_LEN,
-        MAX_METADATA_LEN, SERVER, SHA_256_LEN, SIGNAL_LEN,
+        MAX_METADATA_LEN, RELAY, SHA_256_LEN, SIGNAL_LEN,
     },
     utils::{bytes_to_string, get_accept_input, mut_vec, send_identifier, FileOperations, Signals},
 };
@@ -170,10 +170,10 @@ where
         Ok(signal.as_str().into())
     }
 
-    /// Reads a signal from a server.
+    /// Reads a signal from a relay.
     ///
     /// Returns the signal.
-    fn read_signal_server(&mut self) -> io::Result<Signals> {
+    fn read_signal_relay(&mut self) -> io::Result<Signals> {
         let mut signal = vec![0u8; SIGNAL_LEN];
         self.get_mut_writer().0.read_exact(&mut signal)?;
         let signal = bytes_to_string(&signal);
@@ -242,7 +242,7 @@ where
     /// connection.
     fn shared_secret(&mut self) -> io::Result<()>;
 
-    /// The main function for downloading in a P2P mode (sender -> receiver) or from a server.
+    /// The main function for downloading in a P2P mode (sender -> receiver) or from a relay.
     fn download(&mut self) -> io::Result<bool> {
         info!("Waiting ...");
 
@@ -351,23 +351,23 @@ where
         }
     }
 
-    /// Checks if the receiver is connected to a server.
+    /// Checks if the receiver is connected to a relay.
     ///
     /// Returns true if yes, and false if not.
-    pub fn is_connected_to_server(&mut self) -> io::Result<bool> {
-        let mut server_or_client = [0u8; 1];
-        self.writer.0.read_exact(&mut server_or_client)?;
-        Ok(server_or_client[0] == SERVER)
+    pub fn is_connected_to_relay(&mut self) -> io::Result<bool> {
+        let mut relay_or_client = [0u8; 1];
+        self.writer.0.read_exact(&mut relay_or_client)?;
+        Ok(relay_or_client[0] == RELAY)
     }
 
-    /// The main method when connecting to a server. Handles the transferring process.
+    /// The main method when connecting to a relay. Handles the transferring process.
     pub fn init(&mut self) -> io::Result<bool> {
-        if !self.is_connected_to_server()? {
-            error!("Not a server");
+        if !self.is_connected_to_relay()? {
+            error!("Not a relay");
             return Ok(false);
         }
 
-        // Write to the server the client connecting is a receiver
+        // Write to the relay the client connecting is a receiver
         self.writer.0.write_all(&[CLIENT_RECV])?;
 
         if !send_identifier(self.ident.as_bytes(), &mut self.writer.0)? {
@@ -378,7 +378,7 @@ where
         loop {
 
             loop {
-                match self.read_signal_server()? {
+                match self.read_signal_relay()? {
                     Signals::StartFt => break,
                     // Connectivity check
                     Signals::Other => self.writer.0.write_all(&[1])?,
@@ -386,7 +386,7 @@ where
                         info!("This identifier is not available.");
                         return Ok(false);
                     }
-                    s => panic!("Invalid signal when reading signal from server. {}", s),
+                    s => panic!("Invalid signal when reading signal from relay. {}", s),
                 }
             }
 

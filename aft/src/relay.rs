@@ -1,7 +1,7 @@
-//! Handling middle server functionality.
+//! Handling relay functionality.
 use crate::{
     constants::{
-        CLIENT_RECV, MAX_CONTENT_LEN, MAX_IDENTIFIER_LEN, MAX_METADATA_LEN, SERVER, SIGNAL_LEN,
+        CLIENT_RECV, MAX_CONTENT_LEN, MAX_IDENTIFIER_LEN, MAX_METADATA_LEN, RELAY, SIGNAL_LEN,
     },
     utils::{bytes_to_string, Signals},
 };
@@ -129,7 +129,7 @@ async fn read_identifier(socket: &mut TcpStream) -> io::Result<String> {
     Ok(bytes_to_string(&identifier))
 }
 
-/// Initializes the server and starts receiving connections.
+/// Initializes the relay and starts receiving connections.
 ///
 /// Error when there is a connection error.
 pub async fn init(address: &str) -> io::Result<()> {
@@ -142,8 +142,8 @@ pub async fn init(address: &str) -> io::Result<()> {
         info!("New connection from: {:?}", addr);
 
         async fn call(clients: MovT<ClientsHashMap>, mut socket: TcpStream) {
-            // Write to the socket that its connecting to a server
-            error_connection!(socket.write_u8(SERVER).await, return);
+            // Write to the socket that its connecting to a relay
+            error_connection!(socket.write_u8(RELAY).await, return);
 
             // Read what the client wants: download or sending
             let command = error_connection!(socket.read_u8().await, return);
@@ -190,7 +190,7 @@ pub async fn init(address: &str) -> io::Result<()> {
     }
 }
 
-/// Handles connections when the sender and receiver connects to the server to communicate.
+/// Handles connections when the sender and receiver connects to the relay to communicate.
 ///
 /// Returns the signal the client has ended with.
 /// Error when there was a connection problem.

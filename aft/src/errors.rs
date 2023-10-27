@@ -2,16 +2,16 @@ use std::{error, fmt};
 
 #[derive(Debug)]
 pub enum Errors {
-    /// Represents a wrong response from the server or the client.
+    /// Represents a wrong response from the relay or the client.
     WrongResponse,
-    /// Represents a wrong format buffer from the server or the client.
+    /// Represents a wrong format buffer from the relay or the client.
     WrongFormat,
     /// Used when there is no file extension in metadata buffer.
     NoFileExtension,
     /// Stream buffer is too big.
     BufferTooBig,
     /// When requesting from a socket to download.
-    NotServer,
+    NotRelay,
     /// When the client don't have the receiver's identifier.
     NoReceiverIdentifier,
 }
@@ -30,7 +30,7 @@ impl fmt::Display for Errors {
             Errors::WrongFormat => write!(f, "Wrong format."),
             Errors::NoFileExtension => write!(f, "No file extension."),
             Errors::BufferTooBig => write!(f, "Buffer too big."),
-            Errors::NotServer => write!(f, "Not a server."),
+            Errors::NotRelay => write!(f, "Not a relay."),
             Errors::NoReceiverIdentifier => write!(f, "No receiver identifier."),
         }
     }

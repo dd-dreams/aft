@@ -4,7 +4,7 @@ pub mod config;
 pub mod constants;
 pub mod errors;
 pub mod sender;
-pub mod server;
+pub mod relay;
 pub mod utils;
 
 use aft_crypto::{
@@ -20,21 +20,21 @@ use std::{env::args as args_fn, io::Write};
 const SENDER_MODE: u8 = 1;
 const RECEIVER_MODE: u8 = 2;
 const DOWNLOAD_MODE: u8 = 3;
-const SERVER_MODE: u8 = 4;
+const RELAY_MODE: u8 = 4;
 const DEFAULT_PORT: u16 = 1122;
 const DESCR_MSG: &str = "aft - file transfer done easily";
 const USAGE_MSG: &str = "Usage:
     aft sender [--address <address>] [--port <port>] <filename>
     aft receiver [-p <port>]
     aft download -a <address> [-p <port>]
-    aft server [-p <port>]
+    aft relay [-p <port>]
     aft <mode> [options ...]";
 const POSITIONAL_ARGS_MSG: &str = "Positional arguments:
     mode
     ";
 const OPTIONS_ARGS_MSG: &str = "Optional arguments:
-    -a --address ADDRESS        Address to connect to.
-    -p --port PORT              Port to host the server on.
+    -a --address ADDRESS        Address.
+    -p --port PORT              Port.
     -i --identifier IDENTIFIER  Identifier to find the receiver. Used only when its not P2P.
     -v --verbose VERBOSE        Verbose level. Default is 1 (warnings only). Range 1-3.
     -c --config CONFIG          Config location.
@@ -61,8 +61,8 @@ impl<'a> CliArgs<'a> {
         }
     }
 
-    pub fn is_server_receiver(&self) -> bool {
-        [SERVER_MODE, RECEIVER_MODE].contains(&self.mode)
+    pub fn is_relay_receiver(&self) -> bool {
+        [RELAY_MODE, RECEIVER_MODE].contains(&self.mode)
     }
 
     pub fn is_sender(&self) -> bool {
@@ -70,7 +70,7 @@ impl<'a> CliArgs<'a> {
     }
 
     pub fn set_address(&mut self, address: &'a str) -> bool {
-        if self.mode == SERVER_MODE {
+        if self.mode == RELAY_MODE {
             return false;
         }
         self.address = Some(address);
@@ -83,7 +83,7 @@ impl<'a> CliArgs<'a> {
     }
 
     pub fn set_identifier(&mut self, identifier: &'a str) -> bool {
-        if self.mode == SERVER_MODE {
+        if self.mode == RELAY_MODE {
             return false;
         }
         self.identifier = Some(identifier);
@@ -99,7 +99,7 @@ impl<'a> CliArgs<'a> {
     }
 
     pub fn set_filename(&mut self, filename: &'a str) -> bool {
-        if [SERVER_MODE, DOWNLOAD_MODE, RECEIVER_MODE].contains(&self.mode) || filename.is_empty() {
+        if [RELAY_MODE, DOWNLOAD_MODE, RECEIVER_MODE].contains(&self.mode) || filename.is_empty() {
             return false;
         }
         self.filename = filename;
@@ -208,14 +208,14 @@ async fn main() {
         "sender" => SENDER_MODE,
         "receiver" => RECEIVER_MODE,
         "download" => DOWNLOAD_MODE,
-        "server" => SERVER_MODE,
+        "relay" => RELAY_MODE,
         _ => {
             println!("Invalid mode.");
             return;
         }
     });
 
-    if !cliargs.is_server_receiver() && args.len() < 3 {
+    if !cliargs.is_relay_receiver() && args.len() < 3 {
         println!("Not enough arguments provided.");
         return;
     }
@@ -223,8 +223,8 @@ async fn main() {
     for i in (2..args.len()).step_by(2) {
         let arg = &args[i];
         if ["--address", "-a"].contains(&arg.as_str()) {
-            if cliargs.is_server_receiver() {
-                println!("Can't use {} argument when mode==server,receiver", arg);
+            if cliargs.is_relay_receiver() {
+                println!("Can't use {} argument when mode==relay | receiver", arg);
                 return;
             }
             // TODO: add check for IP
@@ -237,8 +237,8 @@ async fn main() {
                 return;
             });
         } else if ["--identifier", "-i"].contains(&arg.as_str()) {
-            if cliargs.is_server_receiver() {
-                println!("Can't use {} argument when mode==server,receiver", arg);
+            if cliargs.is_relay_receiver() {
+                println!("Can't use {} argument when mode==relay,receiver", arg);
                 return;
             }
             cliargs.set_identifier(&args[i + 1]);
@@ -274,9 +274,9 @@ async fn main() {
     };
     build_logger(verbose_mode);
 
-    if cliargs.mode == SERVER_MODE {
-        info!("Running server");
-        server::init(&format!("0.0.0.0:{}", cliargs.port)).await.unwrap();
+    if cliargs.mode == RELAY_MODE {
+        info!("Running relay");
+        relay::init(&format!("0.0.0.0:{}", cliargs.port)).await.unwrap();
     } else if cliargs.mode == RECEIVER_MODE {
         let pass = SData(rpassword::prompt_password("Password: ").expect("Couldn't read password"));
         println!("Code: {}", generate_code_from_pub_ip());
@@ -304,7 +304,7 @@ async fn main() {
             create_128_encryptor,
         );
 
-        downloader.init().expect("There was an error with the server.");
+        downloader.init().expect("There was an error with the relay server.");
     } else if cliargs.mode == SENDER_MODE {
         info!("Running sender");
         let pass = SData(rpassword::prompt_password("Password: ").expect("Couldn't read password"));
@@ -323,7 +323,7 @@ async fn main() {
 
         if c.init_send(cliargs.filename, config.get_identifier().expect("Identifier isn't present"),
                 cliargs.identifier, pass,).unwrap() && c.send_chunks().is_err() {
-            error!("\nCan't reach server.");
+            error!("\nCan't reach relay.");
         }
     } else {
         error!("Unknown mode.");

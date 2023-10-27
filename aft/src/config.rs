@@ -70,7 +70,7 @@ impl Config {
                 MODE_OPTION => {
                     if let Options::None = mode {
                         let value = Config::get_char_val(&line_splitted, index)?;
-                        // modes: 1=client, 2=receiver, 3=download and 4=server.
+                        // modes: 1=client, 2=receiver, 3=download and 4=relay.
                         if value > '0' && value < '5' {
                             // safe to unwrap because we checked if its a digit or not
                             mode = Options::DefaultMode(value.to_digit(10).unwrap() as u8);

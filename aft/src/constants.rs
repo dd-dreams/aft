@@ -23,8 +23,8 @@ pub const MAX_BLOCKS_LEN: usize = 3000;
 pub const CLIENT_SEND: u8 = 0;
 /// Code for a client that receives data.
 pub const CLIENT_RECV: u8 = 1;
-/// Code for a server, acting as a proxy.
-pub const SERVER: u8 = 2;
+/// Code for a relay, acting as a proxy.
+pub const RELAY: u8 = 2;
 /// Signal length.
 pub const SIGNAL_LEN: usize = 6;
 /// SHA-256 hash length in bytes.

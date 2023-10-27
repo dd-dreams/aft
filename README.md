@@ -10,16 +10,16 @@ This program is currently in beta stage.
 - Lightweight (on RAM and storage).
 - Security is top priority.
 - Peer to Peer mode.
-- Middle server mode.
+- Relay mode.
 - Blocking senders.
 - No IP self-lookup.
 
 # Modes
 There are a few modes to use with this program:
-## P2P (Peer to Peer)
-The sender is directly connecting to the receiver, and the transfer process is happening directly.
-## Middle Server
-Allows using a middle server instead of two devices connecting to each other directly. It allows a few benefits such as:
+## Peer to Peer
+The sender is directly connected to the receiver, and the transfer process is happening directly.
+## Relay
+Allows using a middle relay instead of two devices connecting to each other directly. It allows a few benefits such as:
 - No port forward needed on the receiver's end.
 - No direct contact between the receiver and the sender.
 - Better privacy - no IP sharing.
@@ -32,19 +32,18 @@ Usage:
     aft sender [--address <address>] [--port <port>] <filename>
     aft receiver [-p <port>]
     aft download -a <address> [-p <port>]
-    aft server [-p <port>]
+    aft relay [-p <port>]
     aft <mode> [options ...]
 
 Positional arguments:
     mode
 
 Optional arguments:
-    -a --address ADDRESS        Address to connect to.
-    -p --port PORT              Port to host the server on.
+    -a --address ADDRESS        Address.
+    -p --port PORT              Port.
     -i --identifier IDENTIFIER  Identifier to find the receiver. Used only when its not P2P.
     -v --verbose VERBOSE        Verbose level. Default is 1 (warnings only). Range 1-3.
     -c --config CONFIG          Config location.
-    -r --register               Register.
     -v --version                Show version.
 ```
 

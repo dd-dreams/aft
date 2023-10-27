@@ -14,8 +14,6 @@ pub enum Signals {
     EndFt,
     /// Client not online.
     ClientNotOnline,
-    /// Register a user on server.
-    Register,
     /// Start the transfer.
     StartFt,
     /// Stop the transfer.
@@ -37,13 +35,12 @@ impl From<&str> for Signals {
         match v {
             "FTSIG1" => Signals::EndFt,
             "FTSIG2" => Signals::ClientNotOnline,
-            "FTSIG3" => Signals::Register,
-            "FTSIG4" => Signals::StartFt,
-            "FTSIG5" => Signals::CloseFt,
-            "FTSIG6" => Signals::Login,
-            "FTSIG7" => Signals::OK,
-            "FTSIG8" => Signals::Error,
-            "FTSIG9" => Signals::Other,
+            "FTSIG3" => Signals::StartFt,
+            "FTSIG4" => Signals::CloseFt,
+            "FTSIG5" => Signals::Login,
+            "FTSIG6" => Signals::OK,
+            "FTSIG7" => Signals::Error,
+            "FTSIG8" => Signals::Other,
             _ => Signals::Unknown,
         }
     }
@@ -54,13 +51,12 @@ impl From<&Signals> for &str {
         match v {
             Signals::EndFt => "FTSIG1",
             Signals::ClientNotOnline => "FTSIG2",
-            Signals::Register => "FTSIG3",
-            Signals::StartFt => "FTSIG4",
-            Signals::CloseFt => "FTSIG5",
-            Signals::Login => "FTSIG6",
-            Signals::OK => "FTSIG7",
-            Signals::Error => "FTSIG8",
-            Signals::Other => "FTSIG9",
+            Signals::StartFt => "FTSIG3",
+            Signals::CloseFt => "FTSIG4",
+            Signals::Login => "FTSIG5",
+            Signals::OK => "FTSIG6",
+            Signals::Error => "FTSIG7",
+            Signals::Other => "FTSIG8",
             _ => "FTSIG",
         }
     }
@@ -71,7 +67,6 @@ impl std::fmt::Display for Signals {
         match *self {
             Signals::EndFt => write!(f, "End file transfer successfully."),
             Signals::ClientNotOnline => write!(f, "Client is not online."),
-            Signals::Register => write!(f, "Register."),
             Signals::StartFt => write!(f, "Start the transfer."),
             Signals::CloseFt => write!(f, "Stop the transfer."),
             Signals::Login => write!(f, "Login."),
