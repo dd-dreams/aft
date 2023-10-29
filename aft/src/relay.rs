@@ -25,23 +25,6 @@ type ClientsHashMap = HashMap<Identifier, TcpStream>;
 /// Moveable type between threads.
 type MovT<T> = Arc<RwLock<T>>;
 
-macro_rules! error_connection {
-    ($comm:expr) => {
-        if let Err(e) = $comm {
-            error!("Error in connection: {:?}", e);
-        }
-    };
-    ($comm:expr, $err_comm:expr) => {
-        match $comm {
-            Err(e) => {
-                error!("Error in connection: {:?}", e);
-                $err_comm;
-            }
-            Ok(v) => v,
-        }
-    };
-}
-
 async fn read_both_pks(sender: &mut TcpStream, receiver: &mut TcpStream) -> io::Result<()> {
     // Write to the sender the receiver's public key
     let mut receiver_pk = [0u8; KEY_LENGTH];
@@ -141,30 +124,29 @@ pub async fn init(address: &str) -> io::Result<()> {
         let (socket, addr) = listener.accept().await?;
         info!("New connection from: {:?}", addr);
 
-        async fn call(clients: MovT<ClientsHashMap>, mut socket: TcpStream) {
+        async fn call(clients: MovT<ClientsHashMap>, mut socket: TcpStream) -> io::Result<()> {
             // Write to the socket that its connecting to a relay
-            error_connection!(socket.write_u8(RELAY).await, return);
+            socket.write_u8(RELAY).await?;
 
             // Read what the client wants: download or sending
-            let command = error_connection!(socket.read_u8().await, return);
+            let command = socket.read_u8().await?;
             if command == CLIENT_RECV {
-                let identifier =
-                    error_connection!(read_identifier(&mut socket).await, return);
+                let identifier = read_identifier(&mut socket).await?;
                 if identifier.is_empty() {
-                    return;
+                    return Ok(());
                 }
 
                 let mut clients_writeable = clients.write().await;
                 if let Some(recv_sock) = clients_writeable.get_mut(&identifier) {
                     // Connectivity check
-                    error_connection!(recv_sock.write_all(Signals::Other.as_bytes()).await);
+                    recv_sock.write_all(Signals::Other.as_bytes()).await?;
                     if recv_sock.read_u8().await.is_err() {
                         debug!("{} disconnected", identifier);
                         clients_writeable.remove(&identifier);
                     } else {
                         // Signal that someone is already connected with this identifier
-                        error_connection!(socket.write_all(Signals::Error.as_bytes()).await);
-                        return;
+                        socket.write_all(Signals::Error.as_bytes()).await?;
+                        return Ok(());
                     }
                 }
                 clients_writeable.insert(identifier, socket);
@@ -172,21 +154,23 @@ pub async fn init(address: &str) -> io::Result<()> {
             // The sender (socket = sender)
             else {
                 // Read the receiver's identifier
-                let recv_identifier =
-                    error_connection!(read_identifier(&mut socket).await, return);
+                let recv_identifier = read_identifier(&mut socket).await?;
                 // Read the sender's identifier
-                let sen_identifier =
-                    error_connection!(read_identifier(&mut socket).await, return);
+                let sen_identifier = read_identifier(&mut socket).await?;
                 if recv_identifier.is_empty() || sen_identifier.is_empty() {
-                    return;
+                    return Ok(());
                 }
 
-                error_connection!(
-                    handle_sender(&mut socket, clients, &recv_identifier, &sen_identifier).await);
+                handle_sender(&mut socket, clients, &recv_identifier, &sen_identifier).await?;
             }
+
+            Ok(())
         }
 
-        tokio::spawn(call(hashmap_clients.clone(), socket));
+        let ip = socket.peer_addr();
+        if let Err(e) = tokio::spawn(call(hashmap_clients.clone(), socket)).await {
+            error!("Connection error with {:?}: {}", ip , e);
+        }
     }
 }
 
