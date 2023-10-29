@@ -188,7 +188,7 @@ where
     ///
     /// Returns false if something went wrong (such as the identifier is too long, or when the
     /// receiver isn't online).
-    pub fn init_send(&mut self, path: &str, sen_ident: &str, receiver_identifier: Option<&str>, pass: SData<String>) -> io::Result<bool> {
+    pub fn init(&mut self, path: &str, sen_ident: &str, receiver_identifier: Option<&str>, pass: SData<String>) -> io::Result<bool> {
         let file_path = Path::new(path);
 
         if !basic_file_checks(file_path)? {
