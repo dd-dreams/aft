@@ -227,7 +227,7 @@ where
             self.signal_start()?;
 
             match self.read_signal_relay()? {
-                Signals::OK => info!("Reciever accepted."),
+                Signals::OK => info!("Receiver accepted."),
                 Signals::Error => {
                     error!("Receiver rejected.");
                     return Ok(false);
