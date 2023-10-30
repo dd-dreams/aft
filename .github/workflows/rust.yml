@@ -4,12 +4,13 @@ on:
   push:
     branches: [ "master" ]
     paths-ignore:
-      - "LICENSE"
+      - "LICENSE-MIT"
+      - "LICENSE-APACHE"
       - "README.md"
       - "SECURITY.MD"
       - ".gitignore"
       - ".config"
-      - "docs/"
+      - "docs"
   pull_request:
     branches: [ "master" ]
     
