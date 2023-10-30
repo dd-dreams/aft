@@ -5,6 +5,11 @@ members = [
 ]
 resolver = "2"
 
+[workspace.package]
+authors = ["dd-dreams"]
+homepage = "https://github.com/dd-dreams/aft"
+license = "MIT OR Apache-2.0"
+
 [profile.release]
 lto = true
 strip = "debuginfo"

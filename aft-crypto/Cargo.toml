@@ -2,6 +2,9 @@
 name = "aft-crypto"
 version = "1.2.1"
 edition = "2021"
+authors.workspace = true
+authors.homepage = true
+authors.license = true
 
 [dependencies]
 rand_core = {version = "0.6", default-features = false, features=["getrandom"]}
