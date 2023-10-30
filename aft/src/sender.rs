@@ -165,9 +165,6 @@ where
     ///         "filename": "<filename>",
     ///         "size": "<file size in bytes>",
     ///         "modified": "<date>"
-    ///     },
-    ///     "sender": {
-    ///         "identifier": "<identifier>"
     ///     }
     /// }
     /// ```
@@ -254,9 +251,6 @@ where
                 size: file_path.metadata()?.len(),
                 modified: file_path.metadata()?.modified()?.duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default().as_secs(),
-            },
-            sender: {
-                identifier: self.identifier.as_str()
             }
         };
 
