@@ -43,6 +43,10 @@ async fn handle_sender(sender: &mut TcpStream, clients: MovT<ClientsHashMap>, re
     io::Result<bool>
 {
     let mut receiver: TcpStream;
+    let sender_ip = sender.peer_addr()?;
+
+    debug!("{} wants to transfer to {}", sen_identifier, recv_identifier);
+
     {
         // If the receiver is not online
         if !is_ident_exists(clients.clone(), recv_identifier).await {
@@ -79,7 +83,7 @@ async fn handle_sender(sender: &mut TcpStream, clients: MovT<ClientsHashMap>, re
 
     match acceptance {
         Signals::Error => {
-            info!("{} rejected {}", recv_identifier, sen_identifier);
+            debug!("{} rejected {}", recv_identifier, sender_ip);
             // Keep the receiver listening
             clients.write().await.insert(recv_identifier.to_string(), receiver);
             return Ok(false)
@@ -93,7 +97,7 @@ async fn handle_sender(sender: &mut TcpStream, clients: MovT<ClientsHashMap>, re
 
     read_both_pks(sender, &mut receiver).await?;
 
-    process_proxied(sender, &mut receiver).await?;
+    process_transfer(sender, &mut receiver).await?;
 
     Ok(true)
 }
@@ -128,11 +132,14 @@ pub async fn init(address: &str) -> io::Result<()> {
             // Write to the socket that its connecting to a relay
             socket.write_u8(RELAY).await?;
 
+            let ip = socket.peer_addr()?;
+
             // Read what the client wants: download or sending
             let command = socket.read_u8().await?;
             if command == CLIENT_RECV {
                 let identifier = read_identifier(&mut socket).await?;
                 if identifier.is_empty() {
+                    debug!("{} provided invalid identifier", ip);
                     return Ok(());
                 }
 
@@ -144,6 +151,7 @@ pub async fn init(address: &str) -> io::Result<()> {
                         debug!("{} disconnected", identifier);
                         clients_writeable.remove(&identifier);
                     } else {
+                        debug!("Signaling to {}: {} identifier is not available", ip, identifier);
                         // Signal that someone is already connected with this identifier
                         socket.write_all(Signals::Error.as_bytes()).await?;
                         return Ok(());
@@ -158,6 +166,7 @@ pub async fn init(address: &str) -> io::Result<()> {
                 // Read the sender's identifier
                 let sen_identifier = read_identifier(&mut socket).await?;
                 if recv_identifier.is_empty() || sen_identifier.is_empty() {
+                    debug!("Invalid identifier/s from {}", ip);
                     return Ok(());
                 }
 
@@ -174,11 +183,11 @@ pub async fn init(address: &str) -> io::Result<()> {
     }
 }
 
-/// Handles connections when the sender and receiver connects to the relay to communicate.
+/// Processes the transfer between two peers.
 ///
 /// Returns the signal the client has ended with.
 /// Error when there was a connection problem.
-async fn process_proxied(sender: &mut TcpStream, receiver: &mut TcpStream) -> io::Result<Signals> {
+async fn process_transfer(sender: &mut TcpStream, receiver: &mut TcpStream) -> io::Result<Signals> {
     let mut metadata = [0; MAX_METADATA_LEN + NONCE_TAG_LEN];
     sender.read_exact(&mut metadata).await?;
     // Write metadata to receiver

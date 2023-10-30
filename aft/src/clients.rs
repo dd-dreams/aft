@@ -191,7 +191,7 @@ where
         let metadata_json = json::parse(&{
             let metadata_string = bytes_to_string(&metadata);
             // Reading the metadata is a fixed size, and len(metadata) <= MAX_METADATA_LEN, so we
-            // need to handle when `metadata` isn't full.
+            // need to split `metadata`.
             match metadata_string.split_once('\0') {
                 None => metadata_string,
                 Some(v) => v.0.to_string(),
@@ -255,11 +255,15 @@ where
 
         let (mut file, existed) = checks_open_file(&metadata)?;
 
+        // TODO: Add metadata checks, such as checking if there is enough space.
+
         if existed && file.len()? != sizeb {
             self.get_mut_writer().write_ext(mut_vec!((file.len()?).to_le_bytes()))?;
         } else {
             self.get_mut_writer().write_ext(mut_vec!([0u8; 8]))?;
         }
+
+        // TODO: Receive the current computed checksum based on the file position
 
         let filename = metadata["metadata"]["filename"].as_str().unwrap_or("null");
 
