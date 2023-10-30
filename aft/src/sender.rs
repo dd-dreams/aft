@@ -53,7 +53,6 @@ pub struct Sender<T> {
     writer: SWriter<T>,
     file_path: String,
     current_pos: u64,
-    identifier: String,
     gen_encryptor: fn(&[u8]) -> T,
 }
 
@@ -96,7 +95,7 @@ where
     T: AeadInPlace,
 {
     /// Constructs a new Sender struct, and connects to `remote_ip`.
-    pub fn new(remote_addr: &str, ident: String, encryptor_func: fn(&[u8]) -> T) -> Self {
+    pub fn new(remote_addr: &str, encryptor_func: fn(&[u8]) -> T) -> Self {
         // Remove http(s):// since aft doesn't support HTTPS.
         let no_http_addr = remote_addr.replace("http://", "").replace("https://", "");
         let socket = TcpStream::connect(no_http_addr.to_socket_addrs().expect("Couldn't resolve IP").next()
@@ -106,7 +105,6 @@ where
             writer: SWriter(socket, EncAlgo::<T>::new(&[0u8; KEY_LENGTH], encryptor_func)),
             file_path: String::new(),
             current_pos: 0,
-            identifier: ident,
             gen_encryptor: encryptor_func,
         }
     }

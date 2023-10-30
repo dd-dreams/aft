@@ -315,11 +315,7 @@ async fn main() {
                 get_ip_from_code(&codes)
             }
         };
-        let mut c = Sender::new(
-            &format!("{}:{}", &addr, cliargs.port),
-            config.get_identifier().expect("No identifier set.").clone(),
-            create_128_encryptor,
-        );
+        let mut c = Sender::new( &format!("{}:{}", &addr, cliargs.port), create_128_encryptor);
 
         if c.init(cliargs.filename, config.get_identifier().expect("Identifier isn't present"),
                 cliargs.identifier, pass,).unwrap() && c.send_chunks().is_err() {
