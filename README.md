@@ -55,3 +55,8 @@ SFTP for example does not feature transfer-continuation if the connection is dro
 people.
 
 Both program are excellent, and each one has its own unique benefits, as `aft`.
+
+# License
+Licensed under either of:
+- Apache License, Version 2.0
+- MIT License.
