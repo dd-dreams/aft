@@ -279,12 +279,14 @@ pub fn get_pub_ip() -> io::Result<String> {
 
     stream.write_all(request)?;
 
-    let mut response = String::new();
-    stream.read_to_string(&mut response)?;
+    let mut response = [0; 172];
+    if stream.read(&mut response)? != 0 {
+        let addr = bytes_to_string(&response).trim()
+        .split('\n').last().unwrap_or("Couldn't extract IP").to_string();
+        return Ok(addr);
+    }
 
-    let addr = response.trim().split('\n').last().unwrap_or("Couldn't extract IP").to_string();
-
-    Ok(addr)
+    Ok(String::new())
 }
 
 pub fn ip_to_octets(ip_str: &str) -> [u8; 4] {
