@@ -3,8 +3,8 @@ name = "aft"
 version = "5.0.3"
 edition = "2021"
 authors.workspace = true
-authors.homepage = true
-authors.license = true
+homepage.workspace = true
+license.workspace = true
 
 [dependencies]
 tokio = {version = "1", features = ["io-std", "io-util", "net", "sync", "rt-multi-thread", "macros"]}
