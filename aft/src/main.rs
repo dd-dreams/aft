@@ -325,7 +325,7 @@ async fn main() {
 
         if c.init(cliargs.filename, config.get_identifier().expect("Identifier isn't present"),
                 cliargs.identifier, pass,).unwrap() && c.send_chunks().is_err() {
-            error!("\nCan't reach relay.");
+            error!("\nCan't reach endpoint.");
         }
     } else {
         error!("Unknown mode.");
