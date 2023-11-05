@@ -3,8 +3,8 @@ pub mod clients;
 pub mod config;
 pub mod constants;
 pub mod errors;
-pub mod sender;
 pub mod relay;
+pub mod sender;
 pub mod utils;
 
 use aft_crypto::{

@@ -3,7 +3,7 @@
 pub const MAX_TYPE_LEN: usize = 20;
 /// Maximum name length.
 // 50 is an optimal name length.
-pub const MAX_NAME_LEN: usize = 50;
+pub const MAX_FILENAME_LEN: usize = 50;
 /// Maximum length of "size" in JSON `metadata`.
 // 20 = len(u64::Max)
 pub const MAX_SIZE_LEN: usize = 20;
@@ -12,7 +12,7 @@ pub const MAX_MODIFIED_LEN: usize = 12;
 /// Maximum username length.
 pub const MAX_IDENTIFIER_LEN: usize = 10;
 /// Maximum buffer length that is received from a stream.
-pub const MAX_METADATA_LEN: usize = MAX_NAME_LEN + MAX_TYPE_LEN + MAX_SIZE_LEN + MAX_MODIFIED_LEN + 40 /* 40 = other chars such as { */;
+pub const MAX_METADATA_LEN: usize = MAX_FILENAME_LEN + MAX_TYPE_LEN + MAX_SIZE_LEN + MAX_MODIFIED_LEN + 40 /* 40 = other chars such as { */;
 /// Maximum size of a chunk (64KB).
 pub const MAX_CONTENT_LEN: usize = 65536;
 /// Maximum checksum length (Sha256 length in bytes).
