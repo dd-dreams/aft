@@ -153,9 +153,8 @@ impl FileOperations {
     /// Reads from the file and moves the file cursor.
     ///
     /// Returns the position of the file after reading.
-    pub fn read_seek_file_sized(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
-        let bytes_read = self.file.read(buffer)?;
-        Ok(bytes_read)
+    pub fn read_seek_file(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+        self.file.read(buffer)
     }
 
     pub fn write(&mut self, buffer: &[u8]) -> io::Result<()> {

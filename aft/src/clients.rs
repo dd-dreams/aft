@@ -203,6 +203,7 @@ where
     }
 
     /// Reads chunks of the file from the endpoint and writes them into a file object.
+    /// Only the receiver uses this method.
     ///
     /// Returns the file-checksum of the sender's.
     fn read_write_data(&mut self, file: &mut FileOperations, supposed_len: u64) -> io::Result<Vec::<u8>> {
@@ -255,7 +256,7 @@ where
 
         let (mut file, existed) = checks_open_file(&metadata)?;
 
-        // TODO: Add metadata checks, such as checking if there is enough space.
+        // TODO: Add metadata checks.
 
         if existed && file.len()? != sizeb {
             self.get_mut_writer().write_ext(mut_vec!((file.len()?).to_le_bytes()))?;

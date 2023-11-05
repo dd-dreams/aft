@@ -178,8 +178,6 @@ where
     ///     - Filename.
     ///     - File size.
     ///     - Modified date.
-    ///     - Identifier of the sender.
-    ///
     ///
     /// Returns false if something went wrong (such as the identifier is too long, or when the
     /// receiver isn't online).
@@ -292,7 +290,7 @@ where
 
         let mut buffer = vec![0; MAX_CONTENT_LEN];
         loop {
-            let read_size = file.read_seek_file_sized(&mut buffer)?;
+            let read_size = file.read_seek_file(&mut buffer)?;
             // If we reached EOF
             if read_size == 0 {
                 break;
