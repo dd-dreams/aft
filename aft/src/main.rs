@@ -163,7 +163,7 @@ fn generate_code_from_pub_ip() -> String {
     codes
 }
 
-/// Gets the IP from a generates code-phrase. Only supports IPv4 addresses.
+/// Gets the IP from a generated code-phrase. Only supports IPv4 addresses.
 /// Basically the reversed edition of `generate_code_from_pub_ip`.
 ///
 /// Returns the IP.
