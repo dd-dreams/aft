@@ -239,6 +239,29 @@ where
         }
     }
 
+    /// Checks the starting checksum. Encryption must be enabled.
+    ///
+    /// Returns bool if the local checksum equal to the sender's checksum.
+    fn check_starting_checksum(&mut self, file: &mut FileOperations, end_pos: u64) -> io::Result<bool> {
+        info!("Checking starting checksum");
+
+        let mut content = [0; MAX_CONTENT_LEN];
+
+        file.seek_start(0)?;
+
+        debug!("Computing checksum ...");
+        // Until EOF
+        while file.read_seek_file(&mut content)? != 0 && file.get_index()? != end_pos {
+            file.update_checksum(&content);
+        }
+
+        self.get_mut_writer().write_ext(&mut file.checksum())?;
+        let mut checksum_bytes = vec![0; SHA_256_LEN];
+        self.get_mut_writer().read_ext(&mut checksum_bytes)?;
+
+        Ok(self.check_checksum(&checksum_bytes, &file.checksum()))
+    }
+
     /// Gets shared secret from both endpoints and creates a new "encryptor" object to encrypt the
     /// connection.
     fn shared_secret(&mut self) -> io::Result<()>;
@@ -255,16 +278,23 @@ where
         info!("Incoming {}MB from {}!", sizemb, metadata["sender"]["identifier"]);
 
         let (mut file, existed) = checks_open_file(&metadata)?;
+        let file_len = file.len()?;
 
         // TODO: Add metadata checks.
 
         if existed && file.len()? != sizeb {
-            self.get_mut_writer().write_ext(mut_vec!((file.len()?).to_le_bytes()))?;
+            self.get_mut_writer().write_ext(mut_vec!(file_len.to_le_bytes()))?;
+
+            if !self.check_starting_checksum(&mut file, file_len)? {
+                info!("Starting from 0 since the file was modified");
+                file.reset_checksum();
+                file.seek_start(0)?;
+            } else {
+                file.seek_end(0)?;
+            }
         } else {
             self.get_mut_writer().write_ext(mut_vec!([0u8; 8]))?;
         }
-
-        // TODO: Receive the current computed checksum based on the file position
 
         let filename = metadata["metadata"]["filename"].as_str().unwrap_or("null");
 

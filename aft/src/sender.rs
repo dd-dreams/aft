@@ -273,7 +273,15 @@ where
     /// Returns error when a connection error has occurred.
     pub fn send_chunks(&mut self) -> io::Result<()> {
         let mut file = FileOperations::new(&self.file_path)?;
-        file.seek_start(self.current_pos)?;
+
+        if self.current_pos != 0 && !self.check_starting_checksum(&mut file, self.current_pos)? {
+            info!("Starting from 0 since the file was modified");
+            file.reset_checksum();
+            self.current_pos = 0;
+            file.seek_start(0)?;
+        } else {
+            file.seek_start(self.current_pos)?;
+        }
 
         let mut curr_bars_count = 0u8;
         // Add a new bar to progress bar when x bytes have been transferred
