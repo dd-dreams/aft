@@ -10,7 +10,7 @@ on:
       - "SECURITY.MD"
       - ".gitignore"
       - ".config"
-      - "docs"
+      - "docs/**"
   pull_request:
     branches: [ "master" ]
     
