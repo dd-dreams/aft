@@ -81,10 +81,7 @@ async fn handle_sender(sender: &mut TcpStream, clients: MovT<ClientsHashMap>, re
 }
 
 pub async fn is_ident_exists(clients: MovT<ClientsHashMap>, identifier: &str) -> bool {
-    if clients.read().await.contains_key(identifier) {
-        return true;
-    }
-    false
+    clients.read().await.contains_key(identifier)
 }
 
 async fn read_identifier(socket: &mut TcpStream) -> io::Result<String> {
