@@ -251,7 +251,7 @@ where
 
         debug!("Computing checksum ...");
         // Until EOF
-        while file.read_seek_file(&mut content)? != 0 && file.get_index()? != end_pos {
+        while file.get_index()? != end_pos && file.read_seek_file(&mut content)? != 0 {
             file.update_checksum(&content);
         }
 
@@ -294,6 +294,10 @@ where
             }
         } else {
             self.get_mut_writer().write_ext(mut_vec!([0u8; 8]))?;
+
+            // If there is an eavesdropper, he won't be able to know if the file exists on the
+            // receiver's computer or not, because some checksum is written anyway.
+            self.check_starting_checksum(&mut file, 0)?;
         }
 
         let filename = metadata["metadata"]["filename"].as_str().unwrap_or("null");

@@ -276,7 +276,7 @@ where
     pub fn send_chunks(&mut self) -> io::Result<()> {
         let mut file = FileOperations::new(&self.file_path)?;
 
-        if self.current_pos != 0 && !self.check_starting_checksum(&mut file, self.current_pos)? {
+        if !self.check_starting_checksum(&mut file, self.current_pos)? {
             info!("Starting from 0 since the file was modified");
             file.reset_checksum();
             self.current_pos = 0;
