@@ -19,7 +19,7 @@ use log::{debug, error, info, warn};
 use sha2::{Digest, Sha256};
 use std::{
     io::{self, Read, Write},
-    net::{TcpStream, ToSocketAddrs},
+    net::TcpStream,
     path::Path,
     time::SystemTime,
 };
@@ -95,11 +95,7 @@ where
 {
     /// Constructs a new Sender struct, and connects to `remote_ip`.
     pub fn new(remote_addr: &str, encryptor_func: fn(&[u8]) -> T) -> Self {
-        // Remove http(s):// since aft doesn't support HTTPS.
-        let no_http_addr = remote_addr.replace("http://", "").replace("https://", "");
-        let socket = TcpStream::connect(no_http_addr.to_socket_addrs().expect("Couldn't resolve IP").next()
-            .expect("IP Not resolved"))
-            .expect("Couldn't connect.");
+        let socket = TcpStream::connect(remote_addr).expect("Couldn't connect.");
         Sender {
             writer: SWriter(socket, EncAlgo::<T>::new(&[0u8; KEY_LENGTH], encryptor_func)),
             file_path: String::new(),

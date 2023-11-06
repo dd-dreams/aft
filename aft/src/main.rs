@@ -15,7 +15,7 @@ use config::Config;
 use env_logger::{self, fmt::Color};
 use log::{error, info, Level};
 use sender::Sender;
-use std::{env::args as args_fn, io::Write};
+use std::{env::args as args_fn, io::Write, net::{Ipv4Addr, ToSocketAddrs}};
 
 const SENDER_MODE: u8 = 1;
 const RECEIVER_MODE: u8 = 2;
@@ -42,7 +42,7 @@ const OPTIONS_ARGS_MSG: &str = "Optional arguments:
 
 struct CliArgs<'a> {
     mode: u8,
-    address: Option<&'a str>,
+    address: Option<String>,
     port: u16,
     identifier: Option<&'a str>,
     verbose: u8,
@@ -69,7 +69,7 @@ impl<'a> CliArgs<'a> {
         self.mode == SENDER_MODE
     }
 
-    pub fn set_address(&mut self, address: &'a str) -> bool {
+    pub fn set_address(&mut self, address: String) -> bool {
         if self.mode == RELAY_MODE {
             return false;
         }
@@ -227,8 +227,24 @@ async fn main() {
                 println!("Can't use {} argument when mode==relay | receiver", arg);
                 return;
             }
-            // TODO: add check for IP
-            cliargs.set_address(&args[i + 1]);
+
+            // Remove http(s):// since aft doesn't support HTTPS.
+            let no_http_addr = args[i + 1].replace("http://", "").replace("https://", "");
+            // If it's an IP
+            let addr = if format!("{}:{}", no_http_addr, cliargs.port).parse::<Ipv4Addr>().is_ok() {
+                no_http_addr
+            // If It's some domain or some other address
+            } else {
+                match (no_http_addr, cliargs.port).to_socket_addrs() {
+                    Ok(v) => v,
+                    Err(e) => {
+                        println!("Address is invalid. {}", e);
+                        return;
+                    }
+                }.next().expect("Couldn't resolve address.").ip().to_string()
+            };
+
+            cliargs.set_address(addr);
         } else if ["--port", "-p"].contains(&arg.as_str()) {
             cliargs.set_port(if let Ok(v) = args[i + 1].parse() {
                 v
