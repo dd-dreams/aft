@@ -1,43 +1,23 @@
 //! Handling relay functionality.
 use crate::{
     constants::{
-        CLIENT_RECV, MAX_CONTENT_LEN, MAX_IDENTIFIER_LEN, MAX_METADATA_LEN, RELAY, SIGNAL_LEN,
+        CLIENT_RECV, MAX_IDENTIFIER_LEN, RELAY, SIGNAL_LEN,
     },
     utils::{bytes_to_string, Signals},
-};
-use aft_crypto::{
-    data::{AES_GCM_NONCE_SIZE, AES_GCM_TAG_SIZE},
-    exchange::KEY_LENGTH,
 };
 use log::{debug, error, info};
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, io, sync::Arc};
 use tokio::sync::RwLock;
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
+    io::{AsyncReadExt, AsyncWriteExt, copy_bidirectional},
     net::{TcpListener, TcpStream},
 };
-
-const NONCE_TAG_LEN: usize = AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE;
 
 type Identifier = String;
 type ClientsHashMap = HashMap<Identifier, TcpStream>;
 /// Moveable type between threads.
 type MovT<T> = Arc<RwLock<T>>;
-
-async fn read_both_pks(sender: &mut TcpStream, receiver: &mut TcpStream) -> io::Result<()> {
-    // Write to the sender the receiver's public key
-    let mut receiver_pk = [0u8; KEY_LENGTH];
-    receiver.read_exact(&mut receiver_pk).await?;
-    sender.write_all(&receiver_pk).await?;
-
-    // Write to the receiver the sender's public key
-    let mut sender_pk = [0u8; KEY_LENGTH];
-    sender.read_exact(&mut sender_pk).await?;
-    receiver.write_all(&sender_pk).await?;
-
-    Ok(())
-}
 
 async fn handle_sender(sender: &mut TcpStream, clients: MovT<ClientsHashMap>, recv_identifier: &str, sen_identifier: &str) ->
     io::Result<bool>
@@ -95,9 +75,7 @@ async fn handle_sender(sender: &mut TcpStream, clients: MovT<ClientsHashMap>, re
         }
     }
 
-    read_both_pks(sender, &mut receiver).await?;
-
-    process_transfer(sender, &mut receiver).await?;
+    copy_bidirectional(sender, &mut receiver).await?;
 
     Ok(true)
 }
@@ -181,45 +159,6 @@ pub async fn init(address: &str) -> io::Result<()> {
             error!("Connection error with {:?}: {}", ip , e);
         }
     }
-}
-
-/// Processes the transfer between two peers.
-///
-/// Returns the signal the client has ended with.
-/// Error when there was a connection problem.
-async fn process_transfer(sender: &mut TcpStream, receiver: &mut TcpStream) -> io::Result<Signals> {
-    let mut metadata = [0; MAX_METADATA_LEN + NONCE_TAG_LEN];
-    sender.read_exact(&mut metadata).await?;
-    // Write metadata to receiver
-    receiver.write_all(&metadata).await?;
-
-    info!("Received a transfer request from {} to {}", sender.peer_addr()?.ip(), receiver.peer_addr()?.ip());
-    let mut file_current_size = [0u8; 8 + NONCE_TAG_LEN];
-    // Read from the receiver the file size
-    receiver.read_exact(&mut file_current_size).await?;
-    // Send the file size to the sender, so he will know where to start
-    sender.write_all(&file_current_size).await?;
-
-    let mut buffer = [0; MAX_CONTENT_LEN + NONCE_TAG_LEN];
-    loop {
-        match sender.read_exact(&mut buffer).await {
-            Ok(_) => (),
-            Err(_) => {
-                // Wait for everything to be written
-                receiver.shutdown().await?;
-                break;
-            }
-        };
-        match receiver.write_all(&buffer).await {
-            Ok(_) => (),
-            Err(_) => {
-                break;
-            }
-        };
-    }
-    info!("{} -> {} finished successfully", sender.peer_addr()?, receiver.peer_addr()?);
-
-    Ok(Signals::EndFt)
 }
 
 async fn read_signal(socket: &mut TcpStream) -> io::Result<Signals> {
