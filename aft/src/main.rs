@@ -287,7 +287,7 @@ async fn main() {
 
         match receiver.receive(pass) {
             Ok(_) => (),
-            Err(e) => error!("Something happened: {}", e)
+            Err(e) => error!("Something happened: {}", e),
         }
     } else if cliargs.mode == DOWNLOAD_MODE {
         info!("Running downloader");
@@ -309,7 +309,7 @@ async fn main() {
 
         match downloader.init() {
             Ok(_) => (),
-            Err(e) => error!("Something happened: {}", e)
+            Err(e) => error!("Something happened: {}", e),
         }
     } else if cliargs.mode == SENDER_MODE {
         info!("Running sender");
@@ -321,7 +321,7 @@ async fn main() {
                 get_ip_from_code(&codes)
             }
         };
-        let mut c = Sender::new( &format!("{}:{}", &addr, cliargs.port), create_128_encryptor);
+        let mut c = Sender::new(&format!("{}:{}", &addr, cliargs.port), create_128_encryptor);
 
         if c.init(cliargs.filename, config.get_identifier().expect("Identifier isn't present"),
                 cliargs.identifier, pass,).unwrap() && c.send_chunks().is_err() {

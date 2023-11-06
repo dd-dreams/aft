@@ -305,7 +305,8 @@ where
         let recv_checksum = self.read_write_data(&mut file, sizeb)?;
         // If the checksum isn't good
         if !self.check_checksum(&recv_checksum, &file.checksum())
-            && get_accept_input("Keep the file? ").expect("Couldn't read answer") != 'y' {
+            && get_accept_input("Keep the file? ").expect("Couldn't read answer") != 'y'
+        {
             FileOperations::rm(&format!(".{}.tmp", filename))?;
             return Ok(false);
         }

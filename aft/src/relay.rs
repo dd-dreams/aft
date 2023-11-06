@@ -1,8 +1,6 @@
 //! Handling relay functionality.
 use crate::{
-    constants::{
-        CLIENT_RECV, MAX_IDENTIFIER_LEN, RELAY, SIGNAL_LEN,
-    },
+    constants::{CLIENT_RECV, MAX_IDENTIFIER_LEN, RELAY, SIGNAL_LEN},
     utils::{bytes_to_string, Signals},
 };
 use log::{debug, error, info};
@@ -10,7 +8,7 @@ use sha2::{Digest, Sha256};
 use std::{collections::HashMap, io, sync::Arc};
 use tokio::sync::RwLock;
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt, copy_bidirectional},
+    io::{copy_bidirectional, AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
 };
 
@@ -154,7 +152,7 @@ pub async fn init(address: &str) -> io::Result<()> {
 
         let ip = socket.peer_addr();
         if let Err(e) = tokio::spawn(call(hashmap_clients.clone(), socket)).await {
-            error!("Connection error with {:?}: {}", ip , e);
+            error!("Connection error with {:?}: {}", ip, e);
         }
     }
 }
