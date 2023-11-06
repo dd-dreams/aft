@@ -269,8 +269,9 @@ pub fn get_pub_ip() -> io::Result<String> {
 
     let mut response = [0; 172];
     if stream.read(&mut response)? != 0 {
-        let addr = bytes_to_string(&response).trim()
+        let mut addr = bytes_to_string(&response).trim()
         .split('\n').last().unwrap_or("Couldn't extract IP").to_string();
+        addr.pop();
         return Ok(addr);
     }
 

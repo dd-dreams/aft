@@ -282,8 +282,8 @@ where
 
         // TODO: Add metadata checks.
 
-        self.get_mut_writer().write_ext(mut_vec!(
-            if existed && file.len()? != sizeb {
+        self.get_mut_writer()
+            .write_ext(mut_vec!(if existed && file.len()? != sizeb {
                 file_len.to_le_bytes()
             } else {
                 [0; 8]
@@ -384,7 +384,8 @@ where
     /// Constructor. Connects to `remote_ip` automatically.
     pub fn new(remote_ip: &str, ident: String, encryptor_func: fn(&[u8]) -> T) -> Self {
         let socket = TcpStream::connect(remote_ip).expect("Couldn't connect.");
-        Downloader { ident,
+        Downloader {
+            ident,
             writer: SWriter(socket, EncAlgo::<T>::new(&[0; KEY_LENGTH], encryptor_func)),
             gen_encryptor: encryptor_func,
             blocks: UserBlocks::new(BLOCKED_FILENAME).expect("Couldn't open blocked users file."),
@@ -527,7 +528,7 @@ where
 
         Receiver {
             writer: SWriter(socket, EncAlgo::<T>::new(&[0; KEY_LENGTH], encryptor_func)),
-            gen_encryptor: encryptor_func
+            gen_encryptor: encryptor_func,
         }
     }
 
