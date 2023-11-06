@@ -164,7 +164,7 @@ where
     ///
     /// Returns the signal.
     fn read_signal(&mut self) -> io::Result<Signals> {
-        let mut signal = vec![0u8; SIGNAL_LEN];
+        let mut signal = vec![0; SIGNAL_LEN];
         self.get_mut_writer().read_ext(&mut signal)?;
         let signal = bytes_to_string(&signal);
         Ok(signal.as_str().into())
@@ -174,7 +174,7 @@ where
     ///
     /// Returns the signal.
     fn read_signal_relay(&mut self) -> io::Result<Signals> {
-        let mut signal = vec![0u8; SIGNAL_LEN];
+        let mut signal = vec![0; SIGNAL_LEN];
         self.get_mut_writer().0.read_exact(&mut signal)?;
         let signal = bytes_to_string(&signal);
 
@@ -282,22 +282,22 @@ where
 
         // TODO: Add metadata checks.
 
-        if existed && file.len()? != sizeb {
-            self.get_mut_writer().write_ext(mut_vec!(file_len.to_le_bytes()))?;
-
-            if !self.check_starting_checksum(&mut file, file_len)? {
-                info!("Starting from 0 since the file was modified");
-                file.reset_checksum();
-                file.seek_start(0)?;
+        self.get_mut_writer().write_ext(mut_vec!(
+            if existed && file.len()? != sizeb {
+                file_len.to_le_bytes()
             } else {
-                file.seek_end(0)?;
-            }
-        } else {
-            self.get_mut_writer().write_ext(mut_vec!([0u8; 8]))?;
+                [0; 8]
+            })
+        )?;
 
-            // If there is an eavesdropper, he won't be able to know if the file exists on the
-            // receiver's computer or not, because some checksum is written anyway.
-            self.check_starting_checksum(&mut file, 0)?;
+        // If there is an eavesdropper, he won't be able to know if the file exists on the
+        // receiver's computer or not, because some checksum is written anyway.
+        if !self.check_starting_checksum(&mut file, file_len)? {
+            info!("Starting from 0 since the file was modified");
+            file.reset_checksum();
+            file.seek_start(0)?;
+        } else {
+            file.seek_end(0)?;
         }
 
         let filename = metadata["metadata"]["filename"].as_str().unwrap_or("null");
@@ -385,7 +385,7 @@ where
     pub fn new(remote_ip: &str, ident: String, encryptor_func: fn(&[u8]) -> T) -> Self {
         let socket = TcpStream::connect(remote_ip).expect("Couldn't connect.");
         Downloader { ident,
-            writer: SWriter(socket, EncAlgo::<T>::new(&[0u8; KEY_LENGTH], encryptor_func)),
+            writer: SWriter(socket, EncAlgo::<T>::new(&[0; KEY_LENGTH], encryptor_func)),
             gen_encryptor: encryptor_func,
             blocks: UserBlocks::new(BLOCKED_FILENAME).expect("Couldn't open blocked users file."),
         }
@@ -395,7 +395,7 @@ where
     ///
     /// Returns true if yes, and false if not.
     pub fn is_connected_to_relay(&mut self) -> io::Result<bool> {
-        let mut relay_or_client = [0u8; 1];
+        let mut relay_or_client = [0; 1];
         self.writer.0.read_exact(&mut relay_or_client)?;
         Ok(relay_or_client[0] == RELAY)
     }
@@ -526,7 +526,7 @@ where
         info!("Connected to sender");
 
         Receiver {
-            writer: SWriter(socket, EncAlgo::<T>::new(&[0u8; KEY_LENGTH], encryptor_func)),
+            writer: SWriter(socket, EncAlgo::<T>::new(&[0; KEY_LENGTH], encryptor_func)),
             gen_encryptor: encryptor_func
         }
     }
