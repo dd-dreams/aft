@@ -275,7 +275,7 @@ where
 
         let sizeb = metadata["metadata"]["size"].as_u64().unwrap_or(0);
         let sizemb = sizeb / 10_u64.pow(6);
-        info!("Incoming {}MB from {}!", sizemb, metadata["sender"]["identifier"]);
+        info!("Incoming {}MB file", sizemb);
 
         let (mut file, existed) = checks_open_file(&metadata)?;
         let file_len = file.len()?;

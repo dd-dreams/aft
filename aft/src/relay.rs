@@ -68,7 +68,8 @@ async fn handle_sender(sender: &mut TcpStream, clients: MovT<ClientsHashMap>, re
             clients.write().await.insert(recv_identifier.to_string(), receiver);
             return Ok(false)
         },
-        Signals::OK => (),
+        Signals::OK =>
+            debug!("{} accepted request from {}. Transfer started.", recv_identifier, sender_ip),
         s => {
             error!("Invalid signal: {}", s);
             return Ok(false);
