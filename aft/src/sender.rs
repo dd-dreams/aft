@@ -49,7 +49,6 @@ fn basic_file_checks(path: &Path) -> io::Result<bool> {
 
 /// A struct that represents a sender.
 pub struct Sender<T> {
-    // TODO: Handle domains.
     writer: SWriter<T>,
     file_path: String,
     current_pos: u64,
