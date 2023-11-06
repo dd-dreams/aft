@@ -124,10 +124,24 @@ where
     fn if_relay(&mut self, rece_ident: &str, sen_ident: &str) -> io::Result<bool> {
         // Notify the relay that this client is a sender
         self.writer.0.write_all(&[CLIENT_SEND])?;
-        // Write the receiver's identifier
-        Ok(send_identifier(rece_ident.as_bytes(), &mut self.writer.0)?
-            // Write the sender's identifier
+
+        if !(send_identifier(rece_ident.as_bytes(), &mut self.writer.0)?
             && send_identifier(sen_ident.as_bytes(), &mut self.writer.0)?)
+        {
+            return Ok(false);
+        }
+
+        match self.read_signal_relay()? {
+            Signals::OK => Ok(true),
+            Signals::Error => {
+                error!("Receiver is not online.");
+                Ok(false)
+            }
+            s => {
+                error!("Unexepected signal: {}", s);
+                Ok(false)
+            }
+        }
     }
 
     fn get_starting_pos(&mut self) -> io::Result<()> {
@@ -198,18 +212,6 @@ where
                 // If the identifier is too long
                 if !self.if_relay(ident, sen_ident)? {
                     return Ok(false);
-                }
-                // Read signal
-                match self.read_signal_relay()? {
-                    Signals::OK => (),
-                    Signals::Error => {
-                        error!("Receiver is not online.");
-                        return Ok(false);
-                    }
-                    s => {
-                        error!("Unexepected signal: {}", s);
-                        return Ok(false);
-                    }
                 }
             } else {
                 return Err(error_other!(errors::Errors::NoReceiverIdentifier));
