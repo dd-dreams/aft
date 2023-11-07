@@ -237,8 +237,8 @@ async fn main() {
             } else {
                 match (no_http_addr, cliargs.port).to_socket_addrs() {
                     Ok(v) => v,
-                    Err(e) => {
-                        println!("Address is invalid. {}", e);
+                    Err(_) => {
+                        error!("Address is invalid.");
                         return;
                     }
                 }.next().expect("Couldn't resolve address.").ip().to_string()
