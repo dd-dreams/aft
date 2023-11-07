@@ -32,6 +32,8 @@ fn random_passphrase(wordlist: &[&str], len: u8) -> String {
         passphrase.push(DELIMITER);
     }
 
+    passphrase.pop();
+
     passphrase.make_ascii_lowercase();
     passphrase
 }
