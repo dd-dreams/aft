@@ -287,8 +287,7 @@ where
                 file_len.to_le_bytes()
             } else {
                 [0; 8]
-            })
-        )?;
+            }))?;
 
         // If there is an eavesdropper, he won't be able to know if the file exists on the
         // receiver's computer or not, because some checksum is written anyway.
