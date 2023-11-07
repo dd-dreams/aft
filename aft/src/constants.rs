@@ -1,4 +1,3 @@
-// TODO: Convert these types to u8 or u16.
 /// Maximum filetype length.
 pub const MAX_TYPE_LEN: usize = 20;
 /// Maximum name length.
