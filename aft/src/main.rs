@@ -10,6 +10,7 @@ pub mod utils;
 use aft_crypto::{
     bip39,
     data::{create_128_encryptor, Aes128Gcm, SData},
+    password_generator::generate_passphrase
 };
 use config::Config;
 use env_logger::{self, fmt::Color};
@@ -39,6 +40,7 @@ const OPTIONS_ARGS_MSG: &str = "Optional arguments:
     -v --verbose VERBOSE        Verbose level. Default is 1 (warnings only). Range 1-3.
     -c --config CONFIG          Config location.
     -v --version                Show version.";
+const PASSPHRASE_DEFAULT_LEN: u8 = 6;
 
 struct CliArgs<'a> {
     mode: u8,
@@ -294,7 +296,11 @@ async fn main() {
         info!("Running relay");
         relay::init(&format!("0.0.0.0:{}", cliargs.port)).await.unwrap();
     } else if cliargs.mode == RECEIVER_MODE {
-        let pass = SData(rpassword::prompt_password("Password: ").expect("Couldn't read password"));
+        let mut pass = SData(rpassword::prompt_password("Password (press Enter to generate one): ").expect("Couldn't read password"));
+        if pass.0.len() == 0 {
+            pass = SData(generate_passphrase(PASSPHRASE_DEFAULT_LEN));
+            println!("Generated passphrase: {}", pass.0);
+        }
         println!("Code: {}", generate_code_from_pub_ip());
         info!("Running receiver");
 
