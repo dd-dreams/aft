@@ -2,8 +2,6 @@
 
 aft (Advanced File Transfer) is a minimal and secure tool for sharing files between two parties easily and efficiently. Works in Windows, Linux and macOS.
 
-This program is currently in beta stage.
-
 # Features
 - Encryption.
 - Fast.
