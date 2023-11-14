@@ -59,21 +59,17 @@ jobs:
 
       - name: Build release
         run: |
-          rustup update
           cargo update
           cargo build --release --verbose --target ${{ matrix.target }}
 
       - name: Compress Windows
         if: matrix.os == 'windows-latest'
         shell: pwsh
-        run: |
-          Get-ChildItem -Path ./target -Recurse -Filter 'aft.exe' | Compress-Archive -DestinationPath ./${{ matrix.archive_name }}
+        run: Get-ChildItem -Path ./target -Recurse -Filter 'aft.exe' | Compress-Archive -DestinationPath ./${{ matrix.archive_name }}
 
       - name: Compress Linux/macOS
         if: matrix.os != 'windows-latest'
-        run: |
-          ls -lhR
-          gzip -cN target/**/release/aft > ${{ matrix.archive_name }}
+        run: gzip -cN target/**/release/aft > ${{ matrix.archive_name }}
 
       - uses: actions/upload-artifact@v3.1.3
         with:
