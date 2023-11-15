@@ -1,4 +1,4 @@
-# <p align="center">aft<br>advanced file transferring program<br>![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/dd-dreams/aft/.github%2Fworkflows%2Frust.yml)![GitHub release (with filter)](https://img.shields.io/github/v/release/dd-dreams/aft)
+# <p align="center">aft<br>![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/dd-dreams/aft/.github%2Fworkflows%2Frust.yml)![GitHub release (with filter)](https://img.shields.io/github/v/release/dd-dreams/aft)
 
 aft (Advanced File Transfer) is a minimal and secure tool for sharing files between two parties easily and efficiently. Works in Windows, Linux and macOS.
 
@@ -44,6 +44,15 @@ Optional arguments:
     -c --config CONFIG          Config location.
     -v --version                Show version.
 ```
+
+# Installation
+Navigate to the ![releases](https://github.com/dd-dreams/aft/releases) page and choose your platform. For Windows you can export the archive contents by double clicking.
+For Linux and macOS you can use `tar` or `gzip` for extracting the contents. They're usually included by default.
+With `tar` you can use: `tar -xvf <archive>` and with `gzip` you can use: `gzip -dN <archive>`.
+You can export the program anywhere you like, but make sure you add it to PATH so you can easily access it.
+
+If you want to modify the config, you can create a new file at your home directory ("%USERPROFILE%" for Windows and "~/" for Unix) named: ".aft_config".
+Look into `docs/CONFIG.md` to see more.
 
 # Comparisons
 This is the section for the people who might ask what is the difference between this program and SFTP or rsync.
