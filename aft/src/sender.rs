@@ -202,9 +202,12 @@ where
         let mut relay_or_receiver = [0u8; 1];
         self.writer.0.read_exact(&mut relay_or_receiver)?;
         if relay_or_receiver[0] == RELAY {
+            if sen_ident.is_empty() || receiver_identifier.unwrap_or_default().is_empty() {
+                error!("Invalid sender/receiver identifier.");
+                return Ok(false);
+            }
             debug!("Connected to a relay");
             if let Some(ident) = receiver_identifier {
-                // If the identifier is too long
                 if !self.if_relay(ident, sen_ident)? {
                     return Ok(false);
                 }
