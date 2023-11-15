@@ -281,3 +281,13 @@ pub fn ip_to_octets(ip_str: &str) -> [u8; 4] {
     let ip: Ipv4Addr = ip_str.parse().expect("IP format is incorrect.");
     ip.octets()
 }
+
+pub fn get_home_dir() -> String {
+    std::env::var(
+        if cfg!(windows) {
+            "USERPROFILE"
+        } else {
+            "HOME"
+        }
+    ).unwrap_or_default()
+}

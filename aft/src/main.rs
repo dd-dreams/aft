@@ -197,8 +197,8 @@ async fn main() {
         return;
     }
 
-    let mut config =
-        Config::new(&format!("{}/../.config", env!("CARGO_MANIFEST_DIR"))).unwrap_or_default();
+    let mut config = Config::new(&format!("{}/.aft_config", utils::get_home_dir()))
+        .unwrap_or_default();
     let mut verbose_mode = config.get_verbose();
 
     if args.len() - 1 == 1 && ["--version"].contains(&args[1].as_str()) {
