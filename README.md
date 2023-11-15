@@ -46,7 +46,7 @@ Optional arguments:
 ```
 
 # Installation
-Navigate to the ![releases](https://github.com/dd-dreams/aft/releases) page and choose your platform. For Windows you can export the archive contents by double clicking.
+Navigate to the [releases](https://github.com/dd-dreams/aft/releases) page and choose your platform. For Windows you can export the archive contents by double clicking.
 For Linux and macOS you can use `tar` or `gzip` for extracting the contents. They're usually included by default.
 With `tar` you can use: `tar -xvf <archive>` and with `gzip` you can use: `gzip -dN <archive>`.
 You can export the program anywhere you like, but make sure you add it to PATH so you can easily access it.
