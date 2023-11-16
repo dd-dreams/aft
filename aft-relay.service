@@ -1,0 +1,15 @@
+[Unit]
+Description=systemd service for aft relay.
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/aft relay
+Restart=on-failure
+MemoryDenyWriteExecute=true
+NoNewPrivileges=true
+User=aft
+StandardOutput=append:/var/log/aft-relay.log
+StandardError=append:/var/log/aft-relay.log
+
+[Install]
+WantedBy=multi-user.target
