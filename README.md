@@ -58,6 +58,7 @@ Look into `docs/CONFIG.md` to see more.
 In the future, there will be an easy sh script to install the program.
 
 ## Systemd setup
+- Copy the `aft` program into `/usr/local/bin/`
 - Copy `aft-relay.service` into `/etc/systemd/system/`.
 - Start the program with: `sudo systemctl start aft-relay`.
 
