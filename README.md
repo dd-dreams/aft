@@ -71,7 +71,8 @@ This service only runs the relay mode.
 
 You can modify the bantime and maxretries in `aft-relay.conf`.
 
-fail2ban only works on relay mode.
+### Notice
+fail2ban only works on relay mode. fail2ban doesn't work on Windows.
 
 # Comparisons
 This is the section for the people who might ask what is the difference between this program and SFTP or rsync.
