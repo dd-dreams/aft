@@ -54,6 +54,25 @@ You can export the program anywhere you like, but make sure you add it to PATH s
 If you want to modify the config, you can create a new file at your home directory ("%USERPROFILE%" for Windows and "~/" for Unix) named: ".aft_config".
 Look into `docs/CONFIG.md` to see more.
 
+In the future, there will be an easy sh script to install the program.
+
+## Systemd setup
+- Copy `aft-relay.service` into `/etc/systemd/system/`.
+- Start the program with: `sudo systemctl start aft-relay`.
+
+Notice that the service requires a new user called `aft`. If you want the service to be ran with root, remove the `User=aft` line, though it's not recommended for security reasons.
+
+This service only runs the relay mode.
+
+## fail2ban setup
+- Copy `assets/fail2ban/aft-relay-filter.conf` into `/etc/fail2ban/filter.d/`.
+- Copy `assets/fail2ban/aft-relay.conf` into `/etc/fail2ban/jail.d/`
+- Restart the service: `sudo systemctl restart fail2ban`
+
+You can modify the bantime and maxretries in `aft-relay.conf`.
+
+fail2ban only works on relay mode.
+
 # Comparisons
 This is the section for the people who might ask what is the difference between this program and SFTP or rsync.
 Well, on first hand, there isn't much of a difference. This program and the other two use great encryption algorithms;
