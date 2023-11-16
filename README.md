@@ -11,6 +11,7 @@ aft (Advanced File Transfer) is a minimal and secure tool for sharing files betw
 - Relay mode.
 - Blocking senders.
 - No IP self-lookup.
+- fail2ban support.
 
 # Modes
 There are a few modes to use with this program:
