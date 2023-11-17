@@ -47,18 +47,23 @@ Optional arguments:
 ```
 
 # Installation
+
+## Automatic install
+Run the following command to install aft: `curl --proto '=https' -sf https://raw.githubusercontent.com/dd-dreams/aft/master/install.sh | sudo sh -s -- install`.
+
+If you want to modify the config, you can create a new file at your home directory ("%USERPROFILE%" for Windows and "~/" for Unix) named: ".aft_config".
+Look into `docs/CONFIG.md` to see more.
+
+Run the following command to uninstall aft: `curl --proto '=https' -sf https://raw.githubusercontent.com/dd-dreams/aft/master/install.sh | sudo sh -s -- uninstall`.
+
+## Manual install
 Navigate to the [releases](https://github.com/dd-dreams/aft/releases) page and choose your platform. For Windows you can export the archive contents by double clicking.
 For Linux and macOS you can use `tar` or `gzip` for extracting the contents. They're usually included by default.
 With `tar` you can use: `tar -xvf <archive>` and with `gzip` you can use: `gzip -dN <archive>`.
 You can export the program anywhere you like, but make sure you add it to PATH so you can easily access it.
 
-If you want to modify the config, you can create a new file at your home directory ("%USERPROFILE%" for Windows and "~/" for Unix) named: ".aft_config".
-Look into `docs/CONFIG.md` to see more.
-
-In the future, there will be an easy sh script to install the program.
-
-## Systemd setup
-- Copy the `aft` program into `/usr/local/bin/`
+### Systemd setup
+- Copy the `aft` program into `/usr/local/bin/`.
 - Copy `aft-relay.service` into `/etc/systemd/system/`.
 - Start the program with: `sudo systemctl start aft-relay`.
 
