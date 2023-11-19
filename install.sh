@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 _OSTYPE="$(uname -s)"
 CPUTYPE="$(uname -m)"
