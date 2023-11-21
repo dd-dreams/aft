@@ -1,5 +1,5 @@
 # The `aft` config
-The `aft` config is a very simple and minimal config file. It's filename is `.aft_config`, and it should be edited by the user.
+The `aft` config is a very simple and minimal config file. The config should be edited by the user.
 
 ## Format
 The format is very basic, and it's followed by the following rule: `key\s?=\s?value`. `key` and `value` would be discussed in the next section. Every option needs to be on a separate line.
