@@ -81,6 +81,9 @@ You can modify the bantime and maxretries in `aft-relay.conf`.
 ### Notice
 fail2ban only works on relay mode. fail2ban doesn't work on Windows.
 
+# Building
+Building is really simple: `config build --release` and the output will be at `target/release/aft`.
+
 # Comparisons
 This is the section for the people who might ask what is the difference between this program and SFTP or rsync.
 Well, on first hand, there isn't much of a difference. This program and the other two use great encryption algorithms;
