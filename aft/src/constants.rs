@@ -30,3 +30,5 @@ pub const SIGNAL_LEN: usize = 6;
 pub const SHA_256_LEN: usize = 32;
 /// Blocked user filename.
 pub const BLOCKED_FILENAME: &str = ".blocks";
+/// aft directory name.
+pub const AFT_DIRNAME: &str = ".aft";

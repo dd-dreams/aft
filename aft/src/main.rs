@@ -188,6 +188,14 @@ fn get_ip_from_code(codes: &str) -> String {
     pub_ip
 }
 
+fn create_aft_dir() -> std::io::Result<()> {
+    let path = &format!("{}/{}", utils::get_home_dir(), constants::AFT_DIRNAME);
+    if std::path::Path::new(path).exists() {
+        return Ok(())
+    }
+    std::fs::create_dir(path)
+}
+
 /// Main CLI function.
 #[tokio::main]
 async fn main() {
@@ -197,7 +205,7 @@ async fn main() {
         return;
     }
 
-    let mut config = Config::new(&format!("{}/.aft_config", utils::get_home_dir()))
+    let mut config = Config::new(&format!("{}/.aft/config", utils::get_home_dir()))
         .unwrap_or_default();
     let mut verbose_mode = config.get_verbose();
 
@@ -291,6 +299,7 @@ async fn main() {
         _ => "trace",
     };
     build_logger(verbose_mode);
+    create_aft_dir().expect("Couldn't create directory");
 
     if cliargs.mode == RELAY_MODE {
         info!("Running relay");

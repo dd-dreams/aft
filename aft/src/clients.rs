@@ -1,10 +1,10 @@
 //! Clients (Receiver and Downloader).
 use crate::{
     constants::{
-        BLOCKED_FILENAME, CLIENT_RECV, MAX_CHECKSUM_LEN, MAX_CONTENT_LEN, MAX_IDENTIFIER_LEN,
-        MAX_METADATA_LEN, RELAY, SHA_256_LEN, SIGNAL_LEN,
+        BLOCKED_FILENAME, CLIENT_RECV, MAX_CHECKSUM_LEN, MAX_CONTENT_LEN,
+        MAX_IDENTIFIER_LEN, MAX_METADATA_LEN, RELAY, SHA_256_LEN, SIGNAL_LEN,
     },
-    utils::{bytes_to_string, get_accept_input, mut_vec, send_identifier, FileOperations, Signals},
+    utils::{bytes_to_string, get_accept_input, mut_vec, send_identifier, FileOperations, Signals, get_home_dir},
 };
 use aft_crypto::{
     data::{AeadInPlace, EncAlgo, EncryptorBase, SData, AES_GCM_NONCE_SIZE, AES_GCM_TAG_SIZE},
@@ -26,7 +26,7 @@ fn checks_open_file(metadata: &json::JsonValue) -> io::Result<(FileOperations, b
     // the sender's side.
     let filename_trimmed = metadata["metadata"]["filename"].as_str().unwrap_or("null").trim_start_matches('/');
     // (filename is not a path).
-    let filename = &format!(r"./.{}.tmp", filename_trimmed);
+    let filename = &format!(r"{}/.aft/.{}.tmp", get_home_dir(), filename_trimmed);
 
     if FileOperations::is_file_exists(filename) {
         let mut file = FileOperations::new(filename)?;
@@ -306,11 +306,11 @@ where
         if !self.check_checksum(&recv_checksum, &file.checksum())
             && get_accept_input("Keep the file? ").expect("Couldn't read answer") != 'y'
         {
-            FileOperations::rm(&format!(".{}.tmp", filename))?;
+            FileOperations::rm(&format!("{}/.aft/.{}.tmp", get_home_dir(), filename))?;
             return Ok(false);
         }
 
-        FileOperations::rename(&format!(".{}.tmp", filename), filename)?;
+        FileOperations::rename(&format!("{}/.aft/.{}.tmp", get_home_dir(), filename), filename)?;
         Ok(true)
     }
 }
@@ -387,7 +387,7 @@ where
             ident,
             writer: SWriter(socket, EncAlgo::<T>::new(&[0; KEY_LENGTH], encryptor_func)),
             gen_encryptor: encryptor_func,
-            blocks: UserBlocks::new(BLOCKED_FILENAME).expect("Couldn't open blocked users file."),
+            blocks: UserBlocks::new(&format!("{}/.aft/{}", get_home_dir(), BLOCKED_FILENAME)).expect("Couldn't open blocked users file."),
         }
     }
 
