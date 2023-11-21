@@ -205,7 +205,7 @@ async fn main() {
         return;
     }
 
-    let mut config = Config::new(&format!("{}/.aft/config", utils::get_home_dir()))
+    let mut config = Config::new(&format!("{}/{}/config", utils::get_home_dir(), constants::AFT_DIRNAME))
         .unwrap_or_default();
     let mut verbose_mode = config.get_verbose();
 
