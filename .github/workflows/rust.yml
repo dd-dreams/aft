@@ -10,8 +10,8 @@ on:
       - "README.md"
       - "SECURITY.MD"
       - ".gitignore"
-      - ".config"
       - "docs/**"
+      - "install.sh"
   pull_request:
     branches: [ "master" ]
 
