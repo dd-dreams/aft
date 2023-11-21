@@ -14,7 +14,7 @@ aft (Advanced File Transfer) is a minimal and secure tool for sharing files betw
 - fail2ban support.
 
 # Modes
-There are a few modes to use with this program:
+There are a couple of modes to use with this program:
 ## Peer to Peer
 The sender is directly connected to the receiver, and the transfer process is happening directly.
 ## Relay
@@ -51,16 +51,16 @@ Optional arguments:
 ## Automatic install
 Run the following command to install aft: `curl --proto '=https' -sf https://raw.githubusercontent.com/dd-dreams/aft/master/install.sh | sudo sh -s -- install`.
 
-If you want to modify the config, you can create a new file at your home directory ("%USERPROFILE%" for Windows and "~/" for Unix) named: ".aft_config".
+If you want to modify the config, you can create a new file at your home directory (`%USERPROFILE%` for Windows and `~/` for Unix) within `.aft` directory, named: "config".
 Look into `docs/CONFIG.md` to see more.
 
 Run the following command to uninstall aft: `curl --proto '=https' -sf https://raw.githubusercontent.com/dd-dreams/aft/master/install.sh | sudo sh -s -- uninstall`.
 
 ## Manual install
-Navigate to the [releases](https://github.com/dd-dreams/aft/releases) page and choose your platform. For Windows you can export the archive contents by double clicking.
-For Linux and macOS you can use `tar` or `gzip` for extracting the contents. They're usually included by default.
-With `tar` you can use: `tar -xvf <archive>` and with `gzip` you can use: `gzip -dN <archive>`.
-You can export the program anywhere you like, but make sure you add it to PATH so you can easily access it.
+Navigate to the [releases](https://github.com/dd-dreams/aft/releases) page and choose your platform.
+For Windows you can export the archive contents by double clicking.
+For Linux and macOS you can use `gzip` for extracting the contents. `gzip` should be included by default.
+Run: `gzip -dN <archive>`. You can export the program anywhere you like, but make sure you add it to PATH so you can easily access it.
 
 ### Systemd setup
 - Copy the `aft` program into `/usr/local/bin/`.
@@ -82,7 +82,7 @@ You can modify the bantime and maxretries in `aft-relay.conf`.
 fail2ban only works on relay mode. fail2ban doesn't work on Windows.
 
 # Building
-Building is really simple: `config build --release` and the output will be at `target/release/aft`.
+Building is really simple: `cargo build --release` and the output will be at `target/release/aft`.
 
 # Comparisons
 This is the section for the people who might ask what is the difference between this program and SFTP or rsync.
