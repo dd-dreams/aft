@@ -306,7 +306,7 @@ async fn main() {
         relay::init(&format!("0.0.0.0:{}", cliargs.port)).await.unwrap();
     } else if cliargs.mode == RECEIVER_MODE {
         let mut pass = SData(rpassword::prompt_password("Password (press Enter to generate one): ").expect("Couldn't read password"));
-        if pass.0.len() == 0 {
+        if pass.0.is_empty() {
             pass = SData(generate_passphrase(PASSPHRASE_DEFAULT_LEN));
             println!("Generated passphrase: {}", pass.0);
         }
