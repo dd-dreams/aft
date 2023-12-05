@@ -1,11 +1,13 @@
 //! Clients (Receiver and Downloader).
 use crate::{
     constants::{
-        BLOCKED_FILENAME, CLIENT_RECV, MAX_CHECKSUM_LEN, MAX_CONTENT_LEN,
+        AFT_DIRNAME, BLOCKED_FILENAME, CLIENT_RECV, MAX_CHECKSUM_LEN, MAX_CONTENT_LEN,
         MAX_IDENTIFIER_LEN, MAX_METADATA_LEN, RELAY, SHA_256_LEN, SIGNAL_LEN,
-        AFT_DIRNAME
     },
-    utils::{bytes_to_string, get_accept_input, mut_vec, send_identifier, FileOperations, Signals, get_home_dir},
+    utils::{
+        bytes_to_string, get_accept_input, get_home_dir, mut_vec, send_identifier, FileOperations,
+        Signals,
+    },
 };
 use aft_crypto::{
     data::{AeadInPlace, EncAlgo, EncryptorBase, SData, AES_GCM_NONCE_SIZE, AES_GCM_TAG_SIZE},

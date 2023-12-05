@@ -10,7 +10,7 @@ pub mod utils;
 use aft_crypto::{
     bip39,
     data::{create_128_encryptor, Aes128Gcm, SData},
-    password_generator::generate_passphrase
+    password_generator::generate_passphrase,
 };
 use config::Config;
 use env_logger::{self, fmt::Color};
@@ -191,7 +191,7 @@ fn get_ip_from_code(codes: &str) -> String {
 fn create_aft_dir() -> std::io::Result<()> {
     let path = &format!("{}/{}", utils::get_home_dir(), constants::AFT_DIRNAME);
     if std::path::Path::new(path).exists() {
-        return Ok(())
+        return Ok(());
     }
     std::fs::create_dir(path)
 }
