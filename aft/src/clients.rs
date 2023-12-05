@@ -128,16 +128,14 @@ impl UserBlocks {
     }
 
     /// Checks if an IP is blocked.
-    pub fn check_block(&mut self, ip: &str) -> io::Result<bool> {
+    pub fn check_block(&mut self, ip: &[u8]) -> io::Result<bool> {
         let mut content = Vec::new();
         self.file.seek_start(0)?;
         self.file.file.read_to_end(&mut content)?;
 
-        let ip_bytes = ip.as_bytes();
-
         // Split at newline
         for line in content.split(|i| i == &10u8) {
-            if line == ip_bytes {
+            if line == ip {
                 return Ok(true);
             }
         }
@@ -145,8 +143,8 @@ impl UserBlocks {
         Ok(false)
     }
 
-    pub fn add_block(&mut self, ip: &str) -> io::Result<()> {
-        self.file.write(format!("{}\n", ip).as_bytes())?;
+    pub fn add_block(&mut self, ip: &[u8]) -> io::Result<()> {
+        self.file.write(&[ip, &[10u8]].concat())?;
         Ok(())
     }
 }
@@ -437,19 +435,18 @@ where
             let sen_ident = &bytes_to_string(&sen_ident_bytes);
 
             // Read the sender's hashed IP
-            let mut sen_hashed_ip_bytes = [0; SHA_256_LEN];
-            self.writer.0.read_exact(&mut sen_hashed_ip_bytes)?;
-            let sen_hashed_ip = &bytes_to_string(&sen_hashed_ip_bytes);
+            let mut sen_hashed_ip = [0; SHA_256_LEN];
+            self.writer.0.read_exact(&mut sen_hashed_ip)?;
 
             // If this IP isn't blocked
-            if !self.blocks.check_block(sen_hashed_ip)? {
+            if !self.blocks.check_block(&sen_hashed_ip)? {
                 match get_accept_input(&format!("{} wants to send you a file (y/n/b): ", sen_ident))? {
                     // Yes
                     'y' => break,
                     // No
                     'n' => (),
                     // Block
-                    'b' => self.blocks.add_block(sen_hashed_ip)?,
+                    'b' => self.blocks.add_block(&sen_hashed_ip)?,
                     // Invalid input
                     _ => panic!("Invalid input"),
                 };
