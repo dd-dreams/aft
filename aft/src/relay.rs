@@ -6,10 +6,10 @@ use crate::{
 use log::{debug, error, info};
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, io, sync::Arc};
-use tokio::sync::RwLock;
 use tokio::{
     io::{copy_bidirectional, AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
+    sync::RwLock,
 };
 
 type Identifier = String;

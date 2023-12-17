@@ -269,8 +269,6 @@ where
 
     /// The main function for downloading in a P2P mode (sender -> receiver) or from a relay.
     fn download(&mut self) -> io::Result<bool> {
-        info!("Waiting ...");
-
         debug!("Getting metadata");
         let metadata = self.read_metadata()?;
 
