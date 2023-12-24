@@ -12,6 +12,7 @@ on:
       - ".gitignore"
       - "docs/**"
       - "install.sh"
+      - "aft-relay.service"
   pull_request:
     branches: [ "master" ]
 
