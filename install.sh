@@ -22,12 +22,6 @@ fi
 
 if [ $_OSTYPE = "Darwin" ] && [ $1 = "install" ]; then
     echo "Installing aft for macOS"
-
-    # TODO
-    #if [ $_OSTYPE = "Darwin" ] && check_brew_installed; then
-    #	echo "Installing via brew"
-    #	exit 0
-    #fi
     if [ $CPUTYPE = "arm64" ]; then
         URL="https://github.com/dd-dreams/aft/releases/latest/download/aft-macos-aarch64.gz"
     else
