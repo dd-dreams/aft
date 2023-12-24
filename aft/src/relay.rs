@@ -17,6 +17,20 @@ type ClientsHashMap = HashMap<Identifier, TcpStream>;
 /// Moveable type between threads.
 type MovT<T> = Arc<RwLock<T>>;
 
+macro_rules! error_conn {
+    ($comm:expr $(, $ip:tt)*) => {
+        match $comm {
+            Ok(v) => {
+                v
+            },
+            Err(e) => {
+                error!("Error in connection with {}: {:?}", $($ip)*, e);
+                continue;
+            }
+        }
+    };
+}
+
 async fn handle_sender(sender: &mut TcpStream, clients: MovT<ClientsHashMap>, recv_identifier: &str, sen_identifier: &str) ->
     io::Result<bool>
 {
@@ -99,60 +113,51 @@ pub async fn init(address: &str) -> io::Result<()> {
 
     info!("Listening ...");
     loop {
-        let (socket, addr) = listener.accept().await?;
+        let (mut socket, addr) = error_conn!(listener.accept().await, "");
         info!("New connection from: {:?}", addr);
+        let ip = error_conn!(socket.peer_addr(), "");
 
-        async fn call(clients: MovT<ClientsHashMap>, mut socket: TcpStream) -> io::Result<()> {
-            // Write to the socket that its connecting to a relay
-            socket.write_u8(RELAY).await?;
+        // Write to the socket that its connecting to a relay
+        error_conn!(socket.write_u8(RELAY).await, ip);
 
-            let ip = socket.peer_addr()?;
-
-            // Read what the client wants: download or sending
-            let command = socket.read_u8().await?;
-            if command == CLIENT_RECV {
-                let identifier = read_identifier(&mut socket).await?;
-                if identifier.is_empty() {
-                    debug!("{} provided invalid identifier", ip);
-                    return Ok(());
-                }
-
-                let mut clients_writeable = clients.write().await;
-                if let Some(recv_sock) = clients_writeable.get_mut(&identifier) {
-                    // Connectivity check
-                    recv_sock.write_all(Signals::Other.as_bytes()).await?;
-                    if recv_sock.read_u8().await.is_err() {
-                        debug!("{} disconnected", identifier);
-                        clients_writeable.remove(&identifier);
-                    } else {
-                        debug!("Signaling to {}: {} identifier is not available", ip, identifier);
-                        // Signal that someone is already connected with this identifier
-                        socket.write_all(Signals::Error.as_bytes()).await?;
-                        return Ok(());
-                    }
-                }
-                clients_writeable.insert(identifier, socket);
-            }
-            // The sender (socket = sender)
-            else {
-                // Read the receiver's identifier
-                let recv_identifier = read_identifier(&mut socket).await?;
-                // Read the sender's identifier
-                let sen_identifier = read_identifier(&mut socket).await?;
-                if recv_identifier.is_empty() || sen_identifier.is_empty() {
-                    debug!("Invalid identifier/s from {}", ip);
-                    return Ok(());
-                }
-
-                handle_sender(&mut socket, clients, &recv_identifier, &sen_identifier).await?;
+        // Read what the client wants: download or sending
+        let command = error_conn!(socket.read_u8().await, ip);
+        if command == CLIENT_RECV {
+            let identifier = error_conn!(read_identifier(&mut socket).await, ip);
+            if identifier.is_empty() {
+                debug!("{} provided invalid identifier", ip);
+                return Ok(());
             }
 
-            Ok(())
+            let mut clients_writeable = hashmap_clients.write().await;
+            if let Some(recv_sock) = clients_writeable.get_mut(&identifier) {
+                // Connectivity check
+                error_conn!(recv_sock.write_all(Signals::Other.as_bytes()).await, ip);
+                if recv_sock.read_u8().await.is_err() {
+                    debug!("{} disconnected", identifier);
+                    clients_writeable.remove(&identifier);
+                } else {
+                    debug!("Signaling to {}: {} identifier is not available", ip, identifier);
+                    // Signal that someone is already connected with this identifier
+                    error_conn!(socket.write_all(Signals::Error.as_bytes()).await, ip);
+                }
+            }
+            clients_writeable.insert(identifier, socket);
         }
+        // The sender (socket = sender)
+        else {
+            // Read the receiver's identifier
+            let recv_identifier = error_conn!(read_identifier(&mut socket).await, ip);
+            // Read the sender's identifier
+            let sen_identifier = error_conn!(read_identifier(&mut socket).await, ip);
+            if recv_identifier.is_empty() || sen_identifier.is_empty() {
+                debug!("Invalid identifier/s from {}", ip);
+                return Ok(());
+            }
 
-        let ip = socket.peer_addr();
-        if let Err(e) = tokio::spawn(call(hashmap_clients.clone(), socket)).await {
-            error!("Connection error with {:?}: {}", ip, e);
+            error_conn!(
+                handle_sender(&mut socket, hashmap_clients.clone(), &recv_identifier, &sen_identifier).await
+                , ip);
         }
     }
 }
