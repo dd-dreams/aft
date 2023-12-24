@@ -18,13 +18,13 @@ type ClientsHashMap = HashMap<Identifier, TcpStream>;
 type MovT<T> = Arc<RwLock<T>>;
 
 macro_rules! error_conn {
-    ($comm:expr $(, $ip:tt)*) => {
+    ($comm:expr, $ip:expr) => {
         match $comm {
             Ok(v) => {
                 v
             },
             Err(e) => {
-                error!("Error in connection with {}: {:?}", $($ip)*, e);
+                error!("Connection error: {:?} {}", e, $ip);
                 continue;
             }
         }
