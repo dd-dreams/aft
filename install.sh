@@ -3,11 +3,6 @@
 _OSTYPE="$(uname -s)"
 CPUTYPE="$(uname -m)"
 
-check_brew_installed() {
-    brew --version > /dev/null
-    return $?
-}
-
 if [ $# != 1 ]; then
     echo "Bad arguments. Use install or uninstall."
     exit 1
