@@ -8,7 +8,7 @@ license.workspace = true
 
 [dependencies]
 tokio = {version = "1", features = ["io-std", "io-util", "net", "sync", "rt-multi-thread", "macros"]}
-env_logger = "0.10"
+env_logger = "0.11"
 json = "0.12"
 log = "0.4"
 sha2 = "0.10"
