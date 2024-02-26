@@ -13,7 +13,7 @@ use aft_crypto::{
     password_generator::generate_passphrase,
 };
 use config::Config;
-use env_logger::{self, fmt::Color};
+use env_logger;
 use log::{error, info, Level};
 use sender::Sender;
 use std::{env::args as args_fn, io::Write, net::{Ipv4Addr, ToSocketAddrs}};
@@ -109,34 +109,54 @@ impl<'a> CliArgs<'a> {
     }
 }
 
+/// Checks if the terminal supports ANSI escape codes.
+fn check_support_ansi() -> bool {
+    if cfg!(windows) {
+        if let Ok(term) = std::env::var("TERM") {
+            if !term.starts_with("xterm") {
+                return false;
+            }
+        }
+    }
+
+    // Unix machines support ANSI escape codes out of the box.
+    true
+
+}
+
 /// Builds the logger.
 fn build_logger(level: &str) {
     let env = env_logger::Env::default().default_filter_or(level);
     let mut binding = env_logger::Builder::from_env(env);
     let builder = if ["trace", "debug"].contains(&level) {
         binding.format(|buf, record| {
-            let mut style = buf.style();
+            let color;
             let level = record.level();
-            if level == Level::Warn {
-                style.set_color(Color::Yellow);
-            } else if level == Level::Error {
-                style.set_color(Color::Red);
-            } else {
-                style.set_color(Color::Green);
+            if !check_support_ansi() {
+                color = "";
             }
-            writeln!(buf, "[{} {}] {}", buf.timestamp(), style.value(level), record.args())
+            else if level == Level::Warn {
+                // Yellow color
+                color = "\x1B[0;33m";
+            } else if level == Level::Error {
+                // Red color
+                color = "\x1B[0;91m";
+            } else {
+                // Green color
+                color = "\x1B[0;92m";
+            }
+            writeln!(buf, "[{} {color}{}\x1B[0;0m] {}", buf.timestamp(), level, record.args())
         })
     } else {
         binding.format(|buf, record| {
-            let mut style = buf.style();
+            let msg;
             let level = record.level();
             if [Level::Warn, Level::Error].contains(&level) {
-                style.set_color(Color::Red);
-                writeln!(buf, "{} {}", style.value("[!]"), record.args())
+                msg = if check_support_ansi() {"\x1B[0;91m [!]"} else {"[!]"};
             } else {
-                style.set_color(Color::Green);
-                writeln!(buf, "{} {}", style.value("[*]"), record.args())
+                msg = if check_support_ansi() {"\x1B[0;92m [*]"} else {"[*]"};
             }
+            writeln!(buf, "{msg} {}", record.args())
         })
     }.target(env_logger::Target::Stdout);
 
