@@ -267,11 +267,13 @@ pub fn get_pub_ip() -> io::Result<String> {
 
     stream.write_all(request)?;
 
-    let mut response = [0; 172];
-    if stream.read(&mut response)? != 0 {
-        let addr = bytes_to_string(&response).trim()
-        .split('\n').last().unwrap_or("Couldn't extract IP").replace('\0', "").to_string();
-        return Ok(addr);
+    let mut response = [0; 500];
+    let bytes_read = stream.read(&mut response)?;
+    if bytes_read != 0 {
+        let respo_str = bytes_to_string(&response[..bytes_read]);
+        if let Some(ip) = respo_str.lines().last() {
+            return Ok(ip.to_string());
+        }
     }
 
     Ok(String::new())
