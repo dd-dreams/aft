@@ -337,8 +337,8 @@ async fn main() {
             clients::Receiver::new(&format!("0.0.0.0:{}", cliargs.port), create_128_encryptor);
 
         match receiver.receive(pass) {
-            Ok(_) => (),
-            Err(e) => error!("Something happened: {}", e),
+            Ok(b) => if b {info!("Finished succesfully.")},
+            Err(e) => error!("{}", e),
         }
     } else if cliargs.mode == DOWNLOAD_MODE {
         info!("Running downloader");
@@ -359,8 +359,8 @@ async fn main() {
         );
 
         match downloader.init() {
-            Ok(_) => (),
-            Err(e) => error!("Something happened: {}", e),
+            Ok(b) => if b {info!("Finished succesfully.")},
+            Err(e) => error!("{}", e),
         }
     } else if cliargs.mode == SENDER_MODE {
         info!("Running sender");

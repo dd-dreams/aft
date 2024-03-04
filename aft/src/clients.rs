@@ -4,6 +4,7 @@ use crate::{
         AFT_DIRNAME, BLOCKED_FILENAME, CLIENT_RECV, MAX_CHECKSUM_LEN, MAX_CONTENT_LEN,
         MAX_IDENTIFIER_LEN, MAX_METADATA_LEN, RELAY, SHA_256_LEN, SIGNAL_LEN,
     },
+    errors::Errors,
     utils::{
         bytes_to_string, get_accept_input, get_home_dir, mut_vec, send_identifier, FileOperations,
         Signals,
@@ -400,17 +401,16 @@ where
     }
 
     /// The main method when connecting to a relay. Handles the transferring process.
-    pub fn init(&mut self) -> io::Result<bool> {
+    pub fn init(&mut self) -> Result<bool, Errors> {
         if !self.is_connected_to_relay()? {
-            error!("Not a relay");
-            return Ok(false);
+            return Err(Errors::NotRelay);
         }
 
         // Write to the relay the client connecting is a receiver
         self.writer.0.write_all(&[CLIENT_RECV])?;
 
         if !send_identifier(self.ident.as_bytes(), &mut self.writer.0)? {
-            return Ok(false);
+            return Err(Errors::InvalidIdent);
         }
 
         info!("Waiting for requests ...");
@@ -422,8 +422,7 @@ where
                     // Connectivity check
                     Signals::Other => self.writer.0.write_all(&[1])?,
                     Signals::Error => {
-                        info!("This identifier is not available.");
-                        return Ok(false);
+                        return Err(Errors::IdentUnaval);
                     }
                     s => panic!("Invalid signal when reading signal from relay. {}", s),
                 }
@@ -462,12 +461,7 @@ where
         // Exchange secret key with the sender
         self.shared_secret()?;
 
-        if !self.download()? {
-            return Ok(false);
-        }
-
-        info!("Finished successfully");
-        Ok(true)
+        Ok(self.download()?)
     }
 }
 
@@ -552,22 +546,16 @@ where
     }
 
     /// The main function for receiving in P2P mode (sender -> receiver).
-    pub fn receive(&mut self, pass: SData<String>) -> io::Result<bool> {
+    pub fn receive(&mut self, pass: SData<String>) -> Result<bool, Errors> {
         // Write to the sender that its connecting to a receiver
         self.writer.0.write_all(&[CLIENT_RECV])?;
 
         self.shared_secret()?;
 
         if !self.auth(&pass.0)? {
-            error!("Received bad password");
-            return Ok(false);
+            return Err(Errors::InvalidPass);
         }
 
-        if !self.download()? {
-            return Ok(false);
-        }
-
-        info!("Finished successfully");
-        Ok(true)
+        Ok(self.download()?)
     }
 }

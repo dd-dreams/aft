@@ -22,6 +22,8 @@ pub enum Errors {
     InvalidSignal,
     /// Incorrect password.
     InvalidPass,
+    /// Identifier unavailable.
+    IdentUnaval,
     /// Input/output errors.
     IO(ioError),
 }
@@ -45,6 +47,7 @@ impl fmt::Display for Errors {
             Errors::InvalidIdent => write!(f, "Invalid identifier/s."),
             Errors::BasFileChcks => write!(f, "Didn't pass basic file checks."),
             Errors::InvalidPass => write!(f, "Incorrect password."),
+            Errors::IdentUnaval => write!(f, "The provided identifier is not available."),
             Errors::InvalidSignal => write!(f, "Received an invalid signal."),
             Errors::IO(err) => write!(f, "IO: {:?}", err),
         }
