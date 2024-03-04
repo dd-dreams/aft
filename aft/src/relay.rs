@@ -126,7 +126,7 @@ pub async fn init(address: &str) -> io::Result<()> {
             let identifier = error_conn!(read_identifier(&mut socket).await, ip);
             if identifier.is_empty() {
                 debug!("{} provided invalid identifier", ip);
-                return Ok(());
+                continue;
             }
 
             let mut clients_writeable = hashmap_clients.write().await;
@@ -152,7 +152,7 @@ pub async fn init(address: &str) -> io::Result<()> {
             let sen_identifier = error_conn!(read_identifier(&mut socket).await, ip);
             if recv_identifier.is_empty() || sen_identifier.is_empty() {
                 debug!("Invalid identifier/s from {}", ip);
-                return Ok(());
+                continue;
             }
 
             error_conn!(
