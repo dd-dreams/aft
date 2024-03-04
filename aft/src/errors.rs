@@ -44,7 +44,7 @@ impl fmt::Display for Errors {
             Errors::BufferTooBig => write!(f, "Buffer too big."),
             Errors::NotRelay => write!(f, "Not a relay."),
             Errors::NoReceiverIdentifier => write!(f, "No receiver identifier."),
-            Errors::InvalidIdent => write!(f, "Invalid identifier/s."),
+            Errors::InvalidIdent => write!(f, "Invalid identifier/s. Check if the identifier is not too long or empty."),
             Errors::BasFileChcks => write!(f, "Didn't pass basic file checks."),
             Errors::InvalidPass => write!(f, "Incorrect password."),
             Errors::IdentUnaval => write!(f, "The provided identifier is not available."),
