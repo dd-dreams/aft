@@ -54,7 +54,7 @@ dependencies = [
 
 [[package]]
 name = "aft"
-version = "6.1.2"
+version = "6.1.3"
 dependencies = [
  "aft-crypto",
  "env_logger",
