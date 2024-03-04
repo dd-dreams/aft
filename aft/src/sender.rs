@@ -266,7 +266,7 @@ where
         Ok(true)
     }
 
-    /// After the *initial connection*, we send chunks. Every chunk is the data of the file.
+    /// After the *initial connection*, we send chunks. Every chunk is data from the file.
     ///
     /// Returns error when a connection error has occurred.
     pub fn send_chunks(&mut self) -> io::Result<()> {

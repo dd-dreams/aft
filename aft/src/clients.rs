@@ -269,6 +269,8 @@ where
     fn shared_secret(&mut self) -> io::Result<()>;
 
     /// The main function for downloading in a P2P mode (sender -> receiver) or from a relay.
+    ///
+    /// Returns false if the checksum step failed.
     fn download(&mut self) -> io::Result<bool> {
         debug!("Getting metadata");
         let metadata = self.read_metadata()?;
