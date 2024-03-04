@@ -1,4 +1,4 @@
-use std::{error, fmt};
+use std::{error, fmt, io::Error as ioError};
 
 #[derive(Debug)]
 pub enum Errors {
@@ -14,6 +14,16 @@ pub enum Errors {
     NotRelay,
     /// When the client don't have the receiver's identifier.
     NoReceiverIdentifier,
+    /// Invalid identifier.
+    InvalidIdent,
+    /// Didn't pass basic file checks.
+    BasFileChcks,
+    /// Invalid signal.
+    InvalidSignal,
+    /// Incorrect password.
+    InvalidPass,
+    /// Input/output errors.
+    IO(ioError),
 }
 
 #[derive(Debug)]
@@ -32,6 +42,11 @@ impl fmt::Display for Errors {
             Errors::BufferTooBig => write!(f, "Buffer too big."),
             Errors::NotRelay => write!(f, "Not a relay."),
             Errors::NoReceiverIdentifier => write!(f, "No receiver identifier."),
+            Errors::InvalidIdent => write!(f, "Invalid identifier/s."),
+            Errors::BasFileChcks => write!(f, "Didn't pass basic file checks."),
+            Errors::InvalidPass => write!(f, "Incorrect password."),
+            Errors::InvalidSignal => write!(f, "Received an invalid signal."),
+            Errors::IO(err) => write!(f, "IO: {:?}", err),
         }
     }
 }
@@ -43,6 +58,12 @@ impl fmt::Display for ErrorsConfig {
             ErrorsConfig::AlreadyAssigned => write!(f, "Already assigned a value to this option."),
             ErrorsConfig::NoOption => write!(f, "No such option."),
         }
+    }
+}
+
+impl From<ioError> for Errors {
+    fn from(err: ioError) -> Self {
+        Errors::IO(err)
     }
 }
 
