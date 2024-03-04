@@ -374,9 +374,12 @@ async fn main() {
         };
         let mut c = Sender::new(&format!("{}:{}", &addr, cliargs.port), create_128_encryptor);
 
-        if c.init(cliargs.filename, config.get_identifier().expect("Identifier isn't present"),
-                cliargs.identifier, pass,).unwrap() && c.send_chunks().is_err() {
-            error!("\nCan't reach endpoint.");
+        if let Err(e) = c.init(cliargs.filename, config.get_identifier().expect("Identifier isn't present"),
+                cliargs.identifier, pass,) {
+            error!("\n{e}");
+        }
+        if let Err(e) = c.send_chunks() {
+            error!("Connection error: {}", e);
         }
     } else {
         error!("Unknown mode.");

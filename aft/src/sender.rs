@@ -4,7 +4,7 @@ use crate::{
     constants::{
         CLIENT_SEND, MAX_CHECKSUM_LEN, MAX_CONTENT_LEN, MAX_METADATA_LEN, RELAY, SIGNAL_LEN,
     },
-    errors,
+    errors::Errors,
     utils::{
         download_speed, error_other, mut_vec, progress_bar, send_identifier, FileOperations,
         Signals,
@@ -190,11 +190,11 @@ where
     ///
     /// Returns false if something went wrong (such as the identifier is too long, or when the
     /// receiver isn't online).
-    pub fn init(&mut self, path: &str, sen_ident: &str, receiver_identifier: Option<&str>, pass: SData<String>) -> io::Result<bool> {
+    pub fn init(&mut self, path: &str, sen_ident: &str, receiver_identifier: Option<&str>, pass: SData<String>) -> Result<bool, Errors> {
         let file_path = Path::new(path);
 
         if !basic_file_checks(file_path)? {
-            return Ok(false);
+            return Err(Errors::BasFileChcks);
         }
 
         self.file_path = path.to_string();
@@ -203,16 +203,15 @@ where
         self.writer.0.read_exact(&mut relay_or_receiver)?;
         if relay_or_receiver[0] == RELAY {
             if sen_ident.is_empty() || receiver_identifier.unwrap_or_default().is_empty() {
-                error!("Invalid sender/receiver identifier.");
-                return Ok(false);
+                return Err(Errors::InvalidIdent);
             }
             debug!("Connected to a relay");
             if let Some(ident) = receiver_identifier {
                 if !self.if_relay(ident, sen_ident)? {
-                    return Ok(false);
+                    return Err(Errors::NotRelay);
                 }
             } else {
-                return Err(error_other!(errors::Errors::NoReceiverIdentifier));
+                return Err(Errors::NoReceiverIdentifier);
             }
 
             debug!("Signaling to start");
@@ -227,7 +226,7 @@ where
                 }
                 s => {
                     error!("Received invalid signal: {}", s);
-                    return Ok(false);
+                    return Err(Errors::InvalidSignal);
                 }
             }
 
@@ -235,8 +234,7 @@ where
         } else {
             self.shared_secret()?;
             if !self.auth(&pass.0)? {
-                error!("Incorrect password.");
-                return Ok(false);
+                return Err(Errors::InvalidPass);
             }
         }
 
@@ -252,7 +250,7 @@ where
 
         if parsed.dump().len() > MAX_METADATA_LEN {
             error!("Metadata size is too big");
-            return Err(error_other!(errors::Errors::BufferTooBig));
+            return Err(Errors::BufferTooBig);
         }
 
         let dump = parsed.dump();
