@@ -33,6 +33,7 @@ pub enum ErrorsConfig {
     WrongSyntax,
     AlreadyAssigned,
     NoOption,
+    IO(ioError),
 }
 
 impl fmt::Display for Errors {
@@ -60,6 +61,7 @@ impl fmt::Display for ErrorsConfig {
             ErrorsConfig::WrongSyntax => write!(f, "Bad syntax."),
             ErrorsConfig::AlreadyAssigned => write!(f, "Already assigned a value to this option."),
             ErrorsConfig::NoOption => write!(f, "No such option."),
+            ErrorsConfig::IO(err) => write!(f, "IO: {:?}", err),
         }
     }
 }
@@ -67,6 +69,12 @@ impl fmt::Display for ErrorsConfig {
 impl From<ioError> for Errors {
     fn from(err: ioError) -> Self {
         Errors::IO(err)
+    }
+}
+
+impl From<ioError> for ErrorsConfig {
+    fn from(err: ioError) -> Self {
+        ErrorsConfig::IO(err)
     }
 }
 

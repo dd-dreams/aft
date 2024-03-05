@@ -1,7 +1,7 @@
 //! Handles the config file.
-use crate::{errors::ErrorsConfig, utils::error_other};
+use crate::errors::ErrorsConfig;
 use log::error;
-use std::{fs::File, io, io::prelude::*, path::Path};
+use std::{fs::File, io::prelude::*, path::Path};
 
 const VERBOSE_OPTION: &str = "verbose";
 const IDENTIFIER_OPTION: &str = "identifier";
@@ -23,7 +23,7 @@ pub struct Config {
 
 impl Config {
     /// Builds a new config object.
-    pub fn new(path: &str) -> io::Result<Self> {
+    pub fn new(path: &str) -> Result<Self, ErrorsConfig> {
         let path = Path::new(path);
         if !path.is_dir() {
             let mut config = String::new();
@@ -33,7 +33,7 @@ impl Config {
         Ok(Config::default())
     }
 
-    fn generate_config(content: String) -> io::Result<Config> {
+    fn generate_config(content: String) -> Result<Config, ErrorsConfig> {
         let mut verbose = Options::None;
         let mut identifier = Options::None;
         let mut mode = Options::None;
@@ -43,7 +43,7 @@ impl Config {
             // "option = value"
             if line_splitted.len() != 2 || !OPTIONS.contains(&line_splitted[0]) {
                 error!("Bad syntax, line: {}", index);
-                return Err(error_other!(ErrorsConfig::WrongSyntax));
+                return Err(ErrorsConfig::WrongSyntax);
             }
 
             match line_splitted[0].to_lowercase().as_str().trim() {
@@ -56,7 +56,7 @@ impl Config {
                         }
                     } else {
                         error!("Already assigned a value, line: {}", index);
-                        return Err(error_other!(ErrorsConfig::WrongSyntax));
+                        return Err(ErrorsConfig::WrongSyntax);
                     }
                 }
                 IDENTIFIER_OPTION => {
@@ -64,7 +64,7 @@ impl Config {
                         identifier = Options::Identifier(line_splitted[1].to_string());
                     } else {
                         error!("Already assigned a value, line: {}", index);
-                        return Err(error_other!(ErrorsConfig::WrongSyntax));
+                        return Err(ErrorsConfig::WrongSyntax);
                     }
                 }
                 MODE_OPTION => {
@@ -77,12 +77,12 @@ impl Config {
                         }
                     } else {
                         error!("Already assigned a value, line: {}", index);
-                        return Err(error_other!(ErrorsConfig::WrongSyntax));
+                        return Err(ErrorsConfig::WrongSyntax);
                     }
                 }
                 _ => {
                     error!("No such option, line: {}", index);
-                    return Err(error_other!(ErrorsConfig::NoOption));
+                    return Err(ErrorsConfig::NoOption);
                 }
             }
         }
@@ -93,11 +93,11 @@ impl Config {
         })
     }
 
-    fn get_char_val(tokens: &[&str], index: usize) -> io::Result<char> {
+    fn get_char_val(tokens: &[&str], index: usize) -> Result<char, ErrorsConfig> {
         let value = tokens[1].trim().chars().next();
         if value.is_none() {
             error!("Bad syntax, line: {}", index);
-            return Err(error_other!(ErrorsConfig::WrongSyntax));
+            return Err(ErrorsConfig::WrongSyntax);
         }
         Ok(value.unwrap())
     }
