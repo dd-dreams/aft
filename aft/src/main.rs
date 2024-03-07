@@ -133,7 +133,7 @@ fn build_logger(level: &str) {
             let color;
             let level = record.level();
             if !check_support_ansi() {
-                color = "";
+                return writeln!(buf, "[{} {}] {}", buf.timestamp(), level, record.args());
             }
             else if level == Level::Warn {
                 // Yellow color
