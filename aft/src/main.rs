@@ -22,7 +22,6 @@ const SENDER_MODE: u8 = 1;
 const RECEIVER_MODE: u8 = 2;
 const DOWNLOAD_MODE: u8 = 3;
 const RELAY_MODE: u8 = 4;
-const DEFAULT_PORT: u16 = 1122;
 const DESCR_MSG: &str = "aft - file transfer done easily";
 const USAGE_MSG: &str = "Usage:
     aft sender [--address <address>] [--port <port>] <filename>
@@ -56,7 +55,7 @@ impl<'a> CliArgs<'a> {
         CliArgs {
             mode,
             address: None,
-            port: DEFAULT_PORT,
+            port: constants::DEFAULT_PORT,
             identifier: None,
             verbose: 1,
             filename: "",

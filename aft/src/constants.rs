@@ -1,3 +1,5 @@
+/// The default aft port.
+pub const DEFAULT_PORT: u16 = 1122;
 /// Maximum filetype length.
 pub const MAX_TYPE_LEN: usize = 20;
 /// Maximum name length.
