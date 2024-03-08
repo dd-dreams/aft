@@ -116,7 +116,7 @@ where
     /// When there is a connection error.
     ///
     /// Returns false when the identifier is too long.
-    fn if_relay(&mut self, rece_ident: &str, sen_ident: &str) -> io::Result<bool> {
+    fn if_relay(&mut self, rece_ident: &str, sen_ident: &str) -> Result<bool, Errors> {
         // Notify the relay that this client is a sender
         self.writer.0.write_all(&[CLIENT_SEND])?;
 
@@ -128,14 +128,8 @@ where
 
         match self.read_signal_relay()? {
             Signals::OK => Ok(true),
-            Signals::Error => {
-                error!("Receiver is not online.");
-                Ok(false)
-            }
-            s => {
-                error!("Unexepected signal: {}", s);
-                Ok(false)
-            }
+            Signals::Error => Ok(false),
+            _ => Err(Errors::InvalidSignal)
         }
     }
 
@@ -208,7 +202,8 @@ where
             debug!("Connected to a relay");
             if let Some(ident) = receiver_identifier {
                 if !self.if_relay(ident, sen_ident)? {
-                    return Err(Errors::NotRelay);
+                    error!("{ident} not online");
+                    return Ok(false);
                 }
             } else {
                 return Err(Errors::NoReceiverIdentifier);

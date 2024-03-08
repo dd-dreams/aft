@@ -373,9 +373,12 @@ async fn main() {
         };
         let mut c = Sender::new(&format!("{}:{}", &addr, cliargs.port), create_128_encryptor);
 
-        if let Err(e) = c.init(cliargs.filename, config.get_identifier().expect("Identifier isn't present"),
-                cliargs.identifier, pass,) {
-            error!("\n{e}");
+        let init = c.init(cliargs.filename, config.get_identifier().expect("Identifier isn't present"),
+                cliargs.identifier, pass);
+
+        match init {
+            Ok(b) => if !b {return;},
+            Err(e) => {error!("\n{e}"); return;}
         }
         if let Err(e) = c.send_chunks() {
             error!("Connection error: {}", e);
