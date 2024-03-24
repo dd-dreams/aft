@@ -378,7 +378,7 @@ async fn main() {
 
         match init {
             Ok(b) => if !b {return;},
-            Err(e) => {error!("\n{e}"); return;}
+            Err(e) => {error!("{e}"); return;}
         }
         if let Err(e) = c.send_chunks() {
             error!("Connection error: {}", e);
