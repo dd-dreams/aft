@@ -140,6 +140,7 @@ pub async fn init(address: &str) -> io::Result<()> {
                     debug!("Signaling to {}: {} identifier is not available", ip, identifier);
                     // Signal that someone is already connected with this identifier
                     error_conn!(socket.write_all(Signals::Error.as_bytes()).await, ip);
+                    continue;
                 }
             }
             clients_writeable.insert(identifier, socket);
