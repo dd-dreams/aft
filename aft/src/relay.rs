@@ -114,53 +114,57 @@ pub async fn init(address: &str) -> io::Result<()> {
 
     info!("Listening ...");
     loop {
-        let (mut socket, addr) = error_conn!(listener.accept().await, "");
+        let (mut socket, addr) = error_conn!(listener.accept().await, "", continue);
         info!("New connection from: {:?}", addr);
-        let ip = error_conn!(socket.peer_addr(), "");
 
-        // Write to the socket that its connecting to a relay
-        error_conn!(socket.write_u8(RELAY).await, ip);
+        let clients = hashmap_clients.clone();
+        tokio::spawn(async move {
+            let ip = error_conn!(socket.peer_addr(), "");
 
-        // Read what the client wants: download or sending
-        let command = error_conn!(socket.read_u8().await, ip);
-        if command == CLIENT_RECV {
-            let identifier = error_conn!(read_identifier(&mut socket).await, ip);
-            if identifier.is_empty() {
-                debug!("{} provided invalid identifier", ip);
-                continue;
-            }
+            // Write to the socket that its connecting to a relay
+            error_conn!(socket.write_u8(RELAY).await, ip);
 
-            let mut clients_writeable = hashmap_clients.write().await;
-            if let Some(recv_sock) = clients_writeable.get_mut(&identifier) {
-                // Connectivity check
-                error_conn!(recv_sock.write_all(Signals::Other.as_bytes()).await, ip);
-                if recv_sock.read_u8().await.is_err() {
-                    debug!("{} disconnected", identifier);
-                    clients_writeable.remove(&identifier);
-                } else {
-                    debug!("Signaling to {}: {} identifier is not available", ip, identifier);
-                    // Signal that someone is already connected with this identifier
-                    error_conn!(socket.write_all(Signals::Error.as_bytes()).await, ip);
-                    continue;
+            // Read what the client wants: download or sending
+            let command = error_conn!(socket.read_u8().await, ip);
+            if command == CLIENT_RECV {
+                let identifier = error_conn!(read_identifier(&mut socket).await, ip);
+                if identifier.is_empty() {
+                    debug!("{} provided invalid identifier", ip);
+                    return;
                 }
-            }
-            clients_writeable.insert(identifier, socket);
-        }
-        // The sender (socket = sender)
-        else {
-            // Read the receiver's identifier
-            let recv_identifier = error_conn!(read_identifier(&mut socket).await, ip);
-            // Read the sender's identifier
-            let sen_identifier = error_conn!(read_identifier(&mut socket).await, ip);
-            if recv_identifier.is_empty() || sen_identifier.is_empty() {
-                debug!("Invalid identifier/s from {}", ip);
-                continue;
-            }
 
-            error_conn!(
-                handle_sender(&mut socket, hashmap_clients.clone(), &recv_identifier, &sen_identifier).await
-                , ip);
-        }
+                let mut clients_writeable = clients.write().await;
+                if let Some(recv_sock) = clients_writeable.get_mut(&identifier) {
+                    // Connectivity check
+                    error_conn!(recv_sock.write_all(Signals::Other.as_bytes()).await, ip);
+                    if recv_sock.read_u8().await.is_err() {
+                        debug!("{} disconnected", identifier);
+                        clients_writeable.remove(&identifier);
+                    } else {
+                        debug!("Signaling to {}: {} identifier is not available", ip, identifier);
+                        // Signal that someone is already connected with this identifier
+                        error_conn!(socket.write_all(Signals::Error.as_bytes()).await, ip);
+                        return;
+                    }
+                }
+                clients_writeable.insert(identifier, socket);
+            }
+            // The sender (socket = sender)
+            else {
+                // Read the receiver's identifier
+                let recv_identifier = error_conn!(read_identifier(&mut socket).await, ip);
+                // Read the sender's identifier
+                let sen_identifier = error_conn!(read_identifier(&mut socket).await, ip);
+                if recv_identifier.is_empty() || sen_identifier.is_empty() {
+                    debug!("Invalid identifier/s from {}", ip);
+                    return;
+                }
+
+                error_conn!(
+                    handle_sender(&mut socket, clients, &recv_identifier, &sen_identifier).await
+                    , ip);
+            }
+        });
     }
 }
 
