@@ -281,6 +281,7 @@ where
         let pb_length = file.len()? / 50;
 
         debug!("Writing chunks");
+        info!("Sending file ...");
         if self.current_pos != 0 {
             update_pb(&mut curr_bars_count, pb_length, self.current_pos);
         }
