@@ -19,13 +19,14 @@ type MovT<T> = Arc<RwLock<T>>;
 
 macro_rules! error_conn {
     ($comm:expr, $ip:expr) => {
+        error_conn!($comm, $ip, return)
+    };
+    ($comm:expr, $ip:expr, $step:expr) => {
         match $comm {
-            Ok(v) => {
-                v
-            },
+            Ok(v) => v,
             Err(e) => {
                 error!("Connection error: {:?} {}", e, $ip);
-                continue;
+                $step;
             }
         }
     };
