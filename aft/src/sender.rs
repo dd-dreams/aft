@@ -123,7 +123,7 @@ where
         if !(send_identifier(rece_ident.as_bytes(), &mut self.writer.0)?
             && send_identifier(sen_ident.as_bytes(), &mut self.writer.0)?)
         {
-            return Ok(false);
+            return Err(Errors::InvalidIdent);
         }
 
         match self.read_signal_relay()? {
