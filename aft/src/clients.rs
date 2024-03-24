@@ -26,19 +26,16 @@ use std::{
 /// Returns the file object, and boolean saying if it was newly created or opened.
 /// Error when there was an error creating or opening a file.
 fn checks_open_file(metadata: &json::JsonValue) -> io::Result<(FileOperations, bool)> {
-    // Removing "/" at the start, to avoid unwanted behavior. There should be a warning about it at
-    // the sender's side.
-    let filename_trimmed = metadata["metadata"]["filename"].as_str().unwrap_or("null").trim_start_matches('/');
-    // (filename is not a path).
-    let filename = &format!(r"{}/{}/.{}.tmp", get_home_dir(), AFT_DIRNAME, filename_trimmed);
+    let filename = metadata["metadata"]["filename"].as_str().unwrap_or("null").split('/').last().unwrap_or("null");
+    let path = &format!(r"{}/{}/.{}.tmp", get_home_dir(), AFT_DIRNAME, if filename.is_empty() {"null"} else {filename});
 
-    if FileOperations::is_file_exists(filename) {
-        let mut file = FileOperations::new(filename)?;
+    if FileOperations::is_file_exists(path) {
+        let mut file = FileOperations::new(path)?;
         // New data is added at the end
         file.seek_end(0)?;
         Ok((file, true))
     } else {
-        let file = FileOperations::new_create(filename)?;
+        let file = FileOperations::new_create(path)?;
         Ok((file, false))
     }
 }
