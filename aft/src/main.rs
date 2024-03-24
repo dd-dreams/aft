@@ -341,11 +341,14 @@ async fn main() {
         }
     } else if cliargs.mode == DOWNLOAD_MODE {
         info!("Running downloader");
-        let identifier = config.get_identifier();
-        if identifier.is_none() {
+        let identifier = if let Some(ident) = cliargs.identifier {
+            ident
+        } else if let Some(ident) = config.get_identifier() {
+            ident
+        } else {
             error!("Identifier not set.");
             return;
-        }
+        }.to_string();
 
         let mut downloader = clients::Downloader::<Aes128Gcm>::new(
             &format!(
@@ -353,7 +356,7 @@ async fn main() {
                 cliargs.address.expect("No address specified"),
                 cliargs.port
             ),
-            identifier.unwrap().to_string(),
+            identifier,
             create_128_encryptor,
         );
 
