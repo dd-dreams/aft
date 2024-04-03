@@ -160,7 +160,7 @@ impl FileOperations {
 
     /// Seeks to the end - pos.
     pub fn seek_end(&mut self, pos: i64) -> io::Result<u64> {
-        self.file.seek(SeekFrom::End(pos))
+        self.file.seek(SeekFrom::End(-pos))
     }
 
     /// Returns the current cursor position in file.
