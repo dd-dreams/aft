@@ -2,7 +2,7 @@
 use crate::{
     clients::{BaseSocket, Crypto, SWriter},
     constants::{
-        CLIENT_SEND, MAX_CHECKSUM_LEN, MAX_CONTENT_LEN, MAX_METADATA_LEN, RELAY, SIGNAL_LEN,
+        CLIENT_SEND, MAX_CHECKSUM_LEN, MAX_CONTENT_LEN, MAX_METADATA_LEN, RELAY,
     },
     errors::Errors,
     utils::{
@@ -301,10 +301,6 @@ where
             bytes_sent_sec += read_size;
             self.current_pos += read_size as u64;
 
-            // It's fine to include the 0's if there are any in `buffer` (only happens on the last
-            // chunk of the file).
-            file.update_checksum(&buffer);
-
             self.writer.write_ext(&mut buffer)?;
 
             // Progress bar
@@ -323,11 +319,13 @@ where
             }
         }
 
-        println!();
-        debug!("Reached EOF");
+        debug!("\nReached EOF");
+
+        debug!("Computing checksum ...");
+        file.compute_checksum()?;
+
         debug!("Ending file transfer and writing checksum");
-        buffer[..SIGNAL_LEN].copy_from_slice(Signals::EndFt.as_bytes());
-        buffer[SIGNAL_LEN..MAX_CHECKSUM_LEN + SIGNAL_LEN].copy_from_slice(&file.checksum());
+        buffer[..MAX_CHECKSUM_LEN].copy_from_slice(&file.checksum());
         self.writer.write_ext(&mut buffer)?;
         info!("Finished successfully");
 

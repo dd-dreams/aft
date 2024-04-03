@@ -17,7 +17,8 @@ use aft_crypto::{
 use log::{debug, error, info};
 use sha2::{Digest, Sha256};
 use std::{
-    io::{self, Read, Write},
+
+    io::{self, copy, BufReader, Read, Write},
     net::{TcpListener, TcpStream},
 };
 
@@ -66,20 +67,20 @@ where
     T: AeadInPlace,
 {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let mut read_buf = vec![0; buf.len() + AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE];
-        let bytes_read = self.0.read(&mut read_buf)?;
+        let mut read_buf = Vec::with_capacity(buf.len() + AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE);
 
-        if bytes_read < AES_GCM_NONCE_SIZE {
-            return Ok(0);
+        let bytes_read =
+            (&self.0).take((buf.len() + AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE) as u64).read_to_end(&mut read_buf)?;
+
+        if bytes_read == 0 {
+            return Ok(0)
         }
-
-        read_buf.truncate(bytes_read);
 
         let (data, nonce) = read_buf.split_at(read_buf.len() - AES_GCM_NONCE_SIZE);
         let dec_buf = self.1.decrypt(data, nonce).expect("Could not decrypt.");
         buf[..dec_buf.len()].copy_from_slice(&dec_buf);
 
-        Ok(bytes_read - AES_GCM_NONCE_SIZE - AES_GCM_TAG_SIZE)
+        Ok(buf.len())
     }
 }
 
@@ -206,22 +207,19 @@ where
     ///
     /// Returns the file-checksum of the sender's.
     fn read_write_data(&mut self, file: &mut FileOperations, supposed_len: u64) -> io::Result<Vec::<u8>> {
-        let mut content = vec![0; MAX_CONTENT_LEN];
-
         info!("Reading file chunks ...");
-        loop {
-            self.get_mut_writer().read_ext(&mut content)?;
-            if &content[..SIGNAL_LEN] == Signals::EndFt.as_bytes() {
-                file.file.set_len(supposed_len)?;
-                break;
-            }
+        let mut reader = BufReader::with_capacity(MAX_CONTENT_LEN, self.get_mut_writer());
+        copy(&mut reader, &mut file.file)?;
 
-            file.update_checksum(&content);
-            file.write(&content)?;
-        }
+        file.seek_end(MAX_CONTENT_LEN as i64)?;
+
+        let mut checksum = [0; MAX_CHECKSUM_LEN];
+        file.read_seek_file(&mut checksum)?;
+
+        file.file.set_len(supposed_len)?;
 
         // Returns the sender's checksum
-        Ok(content[SIGNAL_LEN..MAX_CHECKSUM_LEN + SIGNAL_LEN].to_vec())
+        Ok(checksum.to_vec())
     }
 
     /// Returns true if checksums are equal, false if they're not.
@@ -249,7 +247,6 @@ where
         file.seek_start(0)?;
 
         debug!("Computing checksum ...");
-        // Until EOF
         while file.get_index()? != end_pos && file.read_seek_file(&mut content)? != 0 {
             file.update_checksum(&content);
         }
@@ -301,6 +298,10 @@ where
         let filename = metadata["metadata"]["filename"].as_str().unwrap_or("null");
 
         let recv_checksum = self.read_write_data(&mut file, sizeb)?;
+
+        info!("Computing checksum ...");
+        file.compute_checksum()?;
+
         // If the checksum isn't good
         if !self.check_checksum(&recv_checksum, &file.checksum())
             && get_accept_input("Keep the file? ").expect("Couldn't read answer") != 'y'

@@ -13,7 +13,6 @@ use aft_crypto::{
     password_generator::generate_passphrase,
 };
 use config::Config;
-use env_logger;
 use log::{error, info, Level};
 use sender::Sender;
 use std::{env::args as args_fn, io::Write, net::{Ipv4Addr, ToSocketAddrs}};

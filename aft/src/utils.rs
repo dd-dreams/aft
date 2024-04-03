@@ -188,6 +188,20 @@ impl FileOperations {
         self.hasher.clone().finalize().to_vec()
     }
 
+    /// Computes the checksum of the current file content. Note this will reset the cursor.
+    pub fn compute_checksum(&mut self) -> io::Result<()> {
+        let mut buffer = [0u8; 1024];
+
+        self.reset_checksum();
+        self.seek_start(0)?;
+
+        while self.file.read(&mut buffer)? != 0 {
+            self.update_checksum(&buffer);
+        }
+
+        Ok(())
+    }
+
     /// Updates the checksum.
     pub fn update_checksum(&mut self, buffer: &[u8]) {
         self.hasher.update(buffer);

@@ -1,13 +1,14 @@
 //! Handling relay functionality.
 use crate::{
-    constants::{CLIENT_RECV, MAX_IDENTIFIER_LEN, RELAY, SIGNAL_LEN},
+
+    constants::{CLIENT_RECV, MAX_IDENTIFIER_LEN, RELAY, SIGNAL_LEN, MAX_METADATA_LEN},
     utils::{bytes_to_string, Signals},
 };
 use log::{debug, error, info};
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, io, sync::Arc};
 use tokio::{
-    io::{copy_bidirectional, AsyncReadExt, AsyncWriteExt},
+    io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
     sync::RwLock,
 };
@@ -30,6 +31,32 @@ macro_rules! error_conn {
             }
         }
     };
+}
+
+// Temporary until https://github.com/tokio-rs/tokio/issues/6454 is implemented, then we could use
+// copy_bidirectional again.
+async fn pre_send(sender: &mut TcpStream, receiver: &mut TcpStream) -> io::Result<()> {
+    // Write to the sender the receiver's public key
+    let mut receiver_pk = [0u8; aft_crypto::exchange::KEY_LENGTH];
+    receiver.read_exact(&mut receiver_pk).await?;
+    sender.write_all(&receiver_pk).await?;
+
+    let first_limit =
+        aft_crypto::exchange::KEY_LENGTH +
+        MAX_METADATA_LEN + aft_crypto::data::AES_GCM_NONCE_SIZE + aft_crypto::data::AES_GCM_TAG_SIZE;
+
+    let mut pre_buf = sender.take(first_limit as u64);
+    // Write to the receiver the sender's public key and the metadata
+    tokio::io::copy(&mut pre_buf, receiver).await?;
+
+    let second_limit =
+        8 + crate::constants::SHA_256_LEN +
+        2*(aft_crypto::data::AES_GCM_NONCE_SIZE + aft_crypto::data::AES_GCM_TAG_SIZE);
+    let mut pre_buf = receiver.take(second_limit as u64);
+    // Write to the receiver the sender's public key and the metadata
+    tokio::io::copy(&mut pre_buf, sender).await?;
+
+    Ok(())
 }
 
 async fn handle_sender(sender: &mut TcpStream, clients: MovT<ClientsHashMap>, recv_identifier: &str, sen_identifier: &str) ->
@@ -89,7 +116,11 @@ async fn handle_sender(sender: &mut TcpStream, clients: MovT<ClientsHashMap>, re
         }
     }
 
-    copy_bidirectional(sender, &mut receiver).await?;
+    // https://github.com/tokio-rs/tokio/issues/6454
+    pre_send(sender, &mut receiver).await?;
+
+    let mut sen_buf = tokio::io::BufReader::with_capacity(crate::constants::MAX_CONTENT_LEN, sender);
+    tokio::io::copy_buf(&mut sen_buf, &mut receiver).await?;
 
     Ok(true)
 }
