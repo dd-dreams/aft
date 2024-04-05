@@ -17,9 +17,9 @@ use aft_crypto::{
 use log::{debug, error, info};
 use sha2::{Digest, Sha256};
 use std::{
-
     io::{self, copy, BufReader, Read, Write},
     net::{TcpListener, TcpStream},
+    time,
 };
 
 /// Opens a file.
@@ -301,6 +301,9 @@ where
             FileOperations::rm(&format!("{}/{}/.{}.tmp", get_home_dir(), AFT_DIRNAME, filename))?;
             return Ok(false);
         }
+
+        let modified_time = metadata["metadata"]["modified"].as_u64().unwrap_or(0);
+        file.file.set_modified(time::SystemTime::UNIX_EPOCH + time::Duration::from_secs(modified_time))?;
 
         FileOperations::rename(&format!("{}/{}/.{}.tmp", get_home_dir(), AFT_DIRNAME, filename), filename)?;
         Ok(true)
