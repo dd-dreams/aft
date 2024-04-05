@@ -239,17 +239,9 @@ where
     /// Checks the starting checksum. Encryption must be enabled.
     ///
     /// Returns bool if the local checksum equal to the sender's checksum.
-    fn check_starting_checksum(&mut self, file: &mut FileOperations, end_pos: u64) -> io::Result<bool> {
-        info!("Checking starting checksum");
-
-        let mut content = [0; MAX_CONTENT_LEN];
-
-        file.seek_start(0)?;
-
-        debug!("Computing checksum ...");
-        while file.get_index()? != end_pos && file.read_seek_file(&mut content)? != 0 {
-            file.update_checksum(&content);
-        }
+    fn check_starting_checksum(&mut self, file: &mut FileOperations) -> io::Result<bool> {
+        debug!("Computing starting checksum ...");
+        file.compute_checksum()?;
 
         self.get_mut_writer().write_ext(&mut file.checksum())?;
         let mut checksum_bytes = vec![0; SHA_256_LEN];
@@ -287,7 +279,7 @@ where
 
         // If there is an eavesdropper, he won't be able to know if the file exists on the
         // receiver's computer or not, because some checksum is written anyway.
-        if !self.check_starting_checksum(&mut file, file_len)? {
+        if !self.check_starting_checksum(&mut file)? {
             info!("Starting from 0 since the file was modified");
             file.reset_checksum();
             file.seek_start(0)?;
