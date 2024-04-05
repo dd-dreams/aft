@@ -80,7 +80,7 @@ where
         let dec_buf = self.1.decrypt(data, nonce).expect("Could not decrypt.");
         buf[..dec_buf.len()].copy_from_slice(&dec_buf);
 
-        Ok(buf.len())
+        Ok(bytes_read - AES_GCM_NONCE_SIZE - AES_GCM_TAG_SIZE)
     }
 }
 
