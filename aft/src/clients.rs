@@ -26,8 +26,7 @@ use std::{
 ///
 /// Returns the file object, and boolean saying if it was newly created or opened.
 /// Error when there was an error creating or opening a file.
-fn checks_open_file(metadata: &json::JsonValue) -> io::Result<(FileOperations, bool)> {
-    let filename = metadata["metadata"]["filename"].as_str().unwrap_or("null").split('/').last().unwrap_or("null");
+fn checks_open_file(filename: &str) -> io::Result<(FileOperations, bool)> {
     let path = &format!(r"{}/{}/.{}.tmp", get_home_dir(), AFT_DIRNAME, if filename.is_empty() {"null"} else {filename});
 
     if FileOperations::is_file_exists(path) {
@@ -257,7 +256,7 @@ where
     /// The main function for downloading in a P2P mode (sender -> receiver) or from a relay.
     ///
     /// Returns false if the checksum step failed.
-    fn download(&mut self) -> io::Result<bool> {
+    fn download(&mut self) -> Result<bool, Errors> {
         debug!("Getting metadata");
         let metadata = self.read_metadata()?;
 
@@ -265,10 +264,16 @@ where
         let sizemb = sizeb / 10_u64.pow(6);
         info!("Incoming {}MB file", sizemb);
 
-        let (mut file, existed) = checks_open_file(&metadata)?;
-        let file_len = file.len()?;
+        let filename = metadata["metadata"]["filename"].as_str().unwrap_or("null").split('/').last().unwrap_or("null");
 
-        // TODO: Add metadata checks.
+        // If a file with the same name exists in the current directory, then exit.
+        if FileOperations::is_file_exists(filename) {
+            error!("Won't overwrite file.");
+            return Err(Errors::BasFileChcks);
+        }
+
+        let (mut file, existed) = checks_open_file(filename)?;
+        let file_len = file.len()?;
 
         self.get_mut_writer()
             .write_ext(mut_vec!(if existed && file.len()? != sizeb {
