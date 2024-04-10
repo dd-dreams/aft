@@ -49,7 +49,7 @@ fn basic_file_checks(path: &Path) -> io::Result<bool> {
 
 /// A struct that represents a sender.
 pub struct Sender<T> {
-    writer: SWriter<T>,
+    writer: SWriter<T, TcpStream>,
     file_path: String,
     current_pos: u64,
     gen_encryptor: fn(&[u8]) -> T,
@@ -59,11 +59,11 @@ impl<T> BaseSocket<T> for Sender<T>
 where
     T: AeadInPlace,
 {
-    fn get_writer(&self) -> &SWriter<T> {
+    fn get_writer(&self) -> &SWriter<T, TcpStream> {
         &self.writer
     }
 
-    fn get_mut_writer(&mut self) -> &mut SWriter<T> {
+    fn get_mut_writer(&mut self) -> &mut SWriter<T, TcpStream> {
         &mut self.writer
     }
 

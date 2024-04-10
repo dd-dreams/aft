@@ -41,15 +41,16 @@ fn checks_open_file(filename: &str) -> io::Result<(FileOperations, bool)> {
 }
 
 /// A safe writer. Acts like a normal writer only that it encrypts the connection.
-pub struct SWriter<T>(pub TcpStream, pub EncAlgo<T>);
+pub struct SWriter<T, W>(pub W, pub EncAlgo<T>) where W: Read + Write;
 
 struct UserBlocks {
     file: FileOperations,
 }
 
-impl<T> Write for SWriter<T>
+impl<T, W> Write for SWriter<T, W>
 where
     T: AeadInPlace,
+    W: Read + Write,
 {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let enc_buf = self.1.encrypt(buf).expect("Could not encrypt.");
@@ -61,9 +62,10 @@ where
     }
 }
 
-impl<T> Read for SWriter<T>
+impl<T, W> Read for SWriter<T, W>
 where
     T: AeadInPlace,
+    W: Read + Write,
 {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let mut read_buf = Vec::with_capacity(buf.len() + AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE);
@@ -83,9 +85,10 @@ where
     }
 }
 
-impl<T> SWriter<T>
+impl<T, W> SWriter<T, W>
 where
     T: AeadInPlace,
+    W: Read + Write,
 {
     /// Better implementation of `write`. Instead of creating a new buffer to encrypt to, it writes
     /// and encrypts "in place".
@@ -154,10 +157,10 @@ where
     T: AeadInPlace,
 {
     /// Returns the writer used in the connection.
-    fn get_writer(&self) -> &SWriter<T>;
+    fn get_writer(&self) -> &SWriter<T, TcpStream>;
 
     /// Returns a mutable writer used in the connection.
-    fn get_mut_writer(&mut self) -> &mut SWriter<T>;
+    fn get_mut_writer(&mut self) -> &mut SWriter<T, TcpStream>;
 
     /// Reads a signal from the endpoint.
     ///
@@ -328,7 +331,7 @@ pub trait Crypto {
 }
 
 pub struct Downloader<T> {
-    writer: SWriter<T>,
+    writer: SWriter<T, TcpStream>,
     ident: String,
     gen_encryptor: fn(&[u8]) -> T,
     blocks: UserBlocks,
@@ -338,11 +341,11 @@ impl<T> BaseSocket<T> for Downloader<T>
 where
     T: AeadInPlace,
 {
-    fn get_writer(&self) -> &SWriter<T> {
+    fn get_writer(&self) -> &SWriter<T, TcpStream> {
         &self.writer
     }
 
-    fn get_mut_writer(&mut self) -> &mut SWriter<T> {
+    fn get_mut_writer(&mut self) -> &mut SWriter<T, TcpStream> {
         &mut self.writer
     }
 
@@ -461,7 +464,7 @@ where
 }
 
 pub struct Receiver<T> {
-    writer: SWriter<T>,
+    writer: SWriter<T, TcpStream>,
     gen_encryptor: fn(&[u8]) -> T,
 }
 
@@ -469,11 +472,11 @@ impl<T> BaseSocket<T> for Receiver<T>
 where
     T: AeadInPlace,
 {
-    fn get_writer(&self) -> &SWriter<T> {
+    fn get_writer(&self) -> &SWriter<T, TcpStream> {
         &self.writer
     }
 
-    fn get_mut_writer(&mut self) -> &mut SWriter<T> {
+    fn get_mut_writer(&mut self) -> &mut SWriter<T, TcpStream> {
         &mut self.writer
     }
 
