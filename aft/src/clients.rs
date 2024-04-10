@@ -41,7 +41,7 @@ fn checks_open_file(filename: &str) -> io::Result<(FileOperations, bool)> {
 }
 
 /// A safe writer. Acts like a normal writer only that it encrypts the connection.
-pub struct SWriter<T, W>(pub W, pub EncAlgo<T>) where W: Read + Write;
+pub struct SWriter<T, W>(pub W, pub EncAlgo<T>) where W: Read;
 
 struct UserBlocks {
     file: FileOperations,
@@ -65,13 +65,13 @@ where
 impl<T, W> Read for SWriter<T, W>
 where
     T: AeadInPlace,
-    W: Read + Write,
+    W: Read,
 {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let mut read_buf = Vec::with_capacity(buf.len() + AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE);
 
         let bytes_read =
-            (&self.0).take((buf.len() + AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE) as u64).read_to_end(&mut read_buf)?;
+            (&mut self.0).take((buf.len() + AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE) as u64).read_to_end(&mut read_buf)?;
 
         if bytes_read == 0 {
             return Ok(0)
