@@ -327,7 +327,14 @@ where
         debug!("Ending file transfer and writing checksum");
         buffer[..MAX_CHECKSUM_LEN].copy_from_slice(&file.checksum());
         self.writer.write_ext(&mut buffer)?;
-        info!("Finished successfully");
+
+        self.writer.0.shutdown(std::net::Shutdown::Write)?;
+
+        if self.read_signal()? == Signals::OK {
+            info!("Finished successfully");
+        } else {
+            error!("Transfer has not completed.");
+        }
 
         Ok(())
     }

@@ -311,6 +311,10 @@ where
         file.file.set_modified(time::SystemTime::UNIX_EPOCH + time::Duration::from_secs(modified_time))?;
 
         FileOperations::rename(&format!("{}/{}/.{}.tmp", get_home_dir(), AFT_DIRNAME, filename), filename)?;
+
+        // Confirm the transfer
+        self.get_mut_writer().write_ext(&mut Signals::OK.as_bytes().to_vec())?;
+
         Ok(true)
     }
 }
