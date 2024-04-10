@@ -224,17 +224,6 @@ where
     /// Returns true if checksums are equal, false if they're not.
     ///
     /// Returns error when there is a connection error.
-    fn check_checksum(&mut self, checksum: &[u8], file_checksum: &[u8]) -> bool {
-        debug!("Checking checksum");
-        if checksum != file_checksum {
-            error!("Checksum not equal");
-            false
-        } else {
-            debug!("Checksum equal");
-            true
-        }
-    }
-
     /// Checks the starting checksum. Encryption must be enabled.
     ///
     /// Returns bool if the local checksum equal to the sender's checksum.
@@ -246,7 +235,7 @@ where
         let mut checksum_bytes = vec![0; SHA_256_LEN];
         self.get_mut_writer().read_ext(&mut checksum_bytes)?;
 
-        Ok(self.check_checksum(&checksum_bytes, &file.checksum()))
+        Ok(checksum_bytes == file.checksum())
     }
 
     /// Gets shared secret from both endpoints and creates a new "encryptor" object to encrypt the
@@ -285,6 +274,7 @@ where
         // If there is an eavesdropper, he won't be able to know if the file exists on the
         // receiver's computer or not, because some checksum is written anyway.
         if !self.check_starting_checksum(&mut file)? {
+            error!("Checksum not equal.");
             info!("Starting from 0 since the file was modified");
             file.reset_checksum();
             file.seek_start(0)?;
@@ -300,9 +290,10 @@ where
         file.compute_checksum()?;
 
         // If the checksum isn't good
-        if !self.check_checksum(&recv_checksum, &file.checksum())
+        if recv_checksum != file.checksum()
             && get_accept_input("Keep the file? ").expect("Couldn't read answer") != 'y'
         {
+            error!("Checksum not equal.");
             FileOperations::rm(&format!("{}/{}/.{}.tmp", get_home_dir(), AFT_DIRNAME, filename))?;
             return Ok(false);
         }
