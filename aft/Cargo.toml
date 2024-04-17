@@ -5,6 +5,11 @@ edition = "2021"
 authors.workspace = true
 homepage.workspace = true
 license.workspace = true
+repository = "https://github.com/dd-dreams/aft"
+description = "Transfer files easily and fast."
+readme = "../README.md"
+keywords = ["cli", "peer-to-peer", "relay", "file-transfer", "decentralized"]
+categories = ["relay", "cli", "file-transfer"]
 
 [dependencies]
 tokio = {version = "1", features = ["io-std", "io-util", "net", "sync", "rt-multi-thread", "macros"]}
@@ -13,4 +18,4 @@ json = "0.12"
 log = "0.4"
 sha2 = "0.10"
 rpassword = "7.2"
-aft-crypto = {path = "../aft-crypto" }
+aft-crypto = {path = "../aft-crypto", version = "1"}
