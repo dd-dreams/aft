@@ -9,7 +9,7 @@ pub mod utils;
 
 use aft_crypto::{
     bip39,
-    data::{create_128_encryptor, Aes128Gcm, SData},
+    data::{create_128_encryptor, create_256_encryptor, Algo, SData},
     password_generator::generate_passphrase,
 };
 use config::Config;
@@ -37,8 +37,28 @@ const OPTIONS_ARGS_MSG: &str = "Optional arguments:
     -i --identifier IDENTIFIER  Identifier to find the receiver. Used only when its not P2P.
     -v --verbose VERBOSE        Verbose level. Default is 1 (warnings only). Range 1-3.
     -c --config CONFIG          Config location.
-    -v --version                Show version.";
+    -v --version                Show version.
+    -e --encryption ALGORITHM   Possbile values: [AES128, AES256].";
 const PASSPHRASE_DEFAULT_LEN: u8 = 6;
+
+macro_rules! create_sender {
+    ($algo:ident, $cliargs:ident, $sen_ident:expr, $addr:ident, $pass:ident) => {
+        {
+            let mut sender = Sender::new($addr, $algo);
+
+            let init = sender.init($cliargs.filename, $sen_ident,
+                    $cliargs.identifier, $pass);
+
+            match init {
+                Ok(b) => if !b {return;},
+                Err(e) => {error!("{e}"); return;}
+            }
+            if let Err(e) = sender.send_chunks() {
+                error!("Connection error: {}", e);
+            }
+        }
+    }
+}
 
 struct CliArgs<'a> {
     mode: u8,
@@ -47,6 +67,7 @@ struct CliArgs<'a> {
     identifier: Option<&'a str>,
     verbose: u8,
     filename: &'a str,
+    algo: Algo
 }
 
 impl<'a> CliArgs<'a> {
@@ -58,6 +79,7 @@ impl<'a> CliArgs<'a> {
             identifier: None,
             verbose: 1,
             filename: "",
+            algo: Algo::Aes128,
         }
     }
 
@@ -104,6 +126,10 @@ impl<'a> CliArgs<'a> {
         }
         self.filename = filename;
         true
+    }
+
+    pub fn set_algo(&mut self, algo: &str) {
+        self.algo = algo.to_lowercase().as_str().into();
     }
 }
 
@@ -302,6 +328,8 @@ async fn main() {
                     return;
                 }
             }
+        } else if ["--encryption", "-e"].contains(&arg.as_str()) {
+            cliargs.set_algo(&args[i+1]);
         } else if cliargs.is_sender() && i == args.len() - 1 {
             cliargs.set_filename(args.last().expect("No filename provided."));
         } else {
@@ -331,10 +359,12 @@ async fn main() {
         println!("Code: {}", generate_code_from_pub_ip());
         info!("Running receiver");
 
-        let mut receiver =
-            clients::Receiver::new(&format!("0.0.0.0:{}", cliargs.port), create_128_encryptor);
+        let res = match cliargs.algo {
+            Algo::Aes128 => clients::Receiver::new(&format!("0.0.0.0:{}", cliargs.port), create_128_encryptor).receive(pass),
+            Algo::Aes256 => clients::Receiver::new(&format!("0.0.0.0:{}", cliargs.port), create_256_encryptor).receive(pass),
+        };
 
-        match receiver.receive(pass) {
+        match res {
             Ok(b) => if b {info!("Finished succesfully.")},
             Err(e) => error!("{}", e),
         }
@@ -349,17 +379,13 @@ async fn main() {
             return;
         }.to_string();
 
-        let mut downloader = clients::Downloader::<Aes128Gcm>::new(
-            &format!(
-                "{}:{}",
-                cliargs.address.expect("No address specified"),
-                cliargs.port
-            ),
-            identifier,
-            create_128_encryptor,
-        );
+        let addr = &format!("{}:{}",cliargs.address.expect("No address specified"), cliargs.port);
+        let res = match cliargs.algo {
+            Algo::Aes128 => clients::Downloader::new(addr, identifier, create_128_encryptor).init(),
+            Algo::Aes256=> clients::Downloader::new(addr, identifier, create_256_encryptor).init(),
+        };
 
-        match downloader.init() {
+        match res {
             Ok(b) => if b {info!("Finished succesfully.")},
             Err(e) => error!("{}", e),
         }
@@ -373,17 +399,21 @@ async fn main() {
                 get_ip_from_code(&codes)
             }
         };
-        let mut c = Sender::new(&format!("{}:{}", &addr, cliargs.port), create_128_encryptor);
+        let addr = &format!("{}:{}", &addr, cliargs.port);
 
-        let init = c.init(cliargs.filename, config.get_identifier().expect("Identifier isn't present"),
-                cliargs.identifier, pass);
-
-        match init {
-            Ok(b) => if !b {return;},
-            Err(e) => {error!("{e}"); return;}
-        }
-        if let Err(e) = c.send_chunks() {
-            error!("Connection error: {}", e);
+        match cliargs.algo {
+            Algo::Aes128 => create_sender!(
+                create_128_encryptor,
+                cliargs,
+                config.get_identifier().expect("No sender identifier provided."),
+                addr, pass
+                ),
+            Algo::Aes256 => create_sender!(
+                create_256_encryptor,
+                cliargs,
+                config.get_identifier().expect("No sender identifier provided."),
+                addr, pass
+                ),
         }
     } else {
         error!("Unknown mode.");

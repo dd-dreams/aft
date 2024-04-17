@@ -20,9 +20,30 @@ pub enum EncryptionErrors {
     IncorrectPassword,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum Algo {
+    /// Over the socket it's represented as "0".
     Aes128,
+    /// Over the socket it's represented as "1".
     Aes256,
+}
+
+impl From<&str> for Algo {
+    fn from(v: &str) -> Self {
+        match v {
+            "aes256" => Algo::Aes256,
+            _ => Algo::Aes128,
+        }
+    }
+}
+
+impl From<u8> for Algo {
+    fn from(v: u8) -> Self {
+        match v {
+            1 => Algo::Aes256,
+            _ => Algo::Aes128
+        }
+    }
 }
 
 // Creates a new AES-GCM encryptor.
