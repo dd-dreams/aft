@@ -208,10 +208,16 @@ where
     /// Only the receiver uses this method.
     ///
     /// Returns the file-checksum of the sender's.
-    fn read_write_data(&mut self, file: &mut FileOperations, supposed_len: u64) -> io::Result<Vec::<u8>> {
+    fn read_write_data(&mut self, file: &mut FileOperations, supposed_len: u64) -> Result<Vec::<u8>, Errors> {
         info!("Reading file chunks ...");
         let mut reader = BufReader::with_capacity(MAX_CONTENT_LEN, self.get_mut_writer());
         copy(&mut reader, &mut file.file)?;
+
+        if file.len()? <= supposed_len {
+            println!("{} {}", file.len()?, supposed_len);
+            error!("The sender has disconnected.");
+            return Err(Errors::WrongResponse);
+        }
 
         file.seek_end(MAX_CONTENT_LEN as i64)?;
 
