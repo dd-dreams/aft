@@ -5,6 +5,8 @@ edition = "2021"
 authors.workspace = true
 homepage.workspace = true
 license.workspace = true
+repository = "https://github.com/dd-dreams/aft/tree/master/aft-crypto"
+description = "Cryptography library for aft."
 
 [dependencies]
 rand_core = {version = "0.6", default-features = false, features=["getrandom"]}
