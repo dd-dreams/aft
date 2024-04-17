@@ -49,6 +49,9 @@ Optional arguments:
 
 # Installation
 
+## Install using cargo
+Run `cargo install aft`, and you should be able to run the program immediately.
+
 ## Automatic install
 Run the following command to install aft: `curl --proto '=https' -sf https://raw.githubusercontent.com/dd-dreams/aft/master/install.sh | sudo sh -s -- install`.
 
