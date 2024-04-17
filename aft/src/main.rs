@@ -23,9 +23,9 @@ const DOWNLOAD_MODE: u8 = 3;
 const RELAY_MODE: u8 = 4;
 const DESCR_MSG: &str = "aft - file transfer done easily";
 const USAGE_MSG: &str = "Usage:
-    aft sender [--address <address>] [--port <port>] <filename>
+    aft sender [--address <address>] [--port <port>] [--identifier <identifier>] <filename>
     aft receiver [-p <port>]
-    aft download -a <address> [-p <port>]
+    aft download -a <address> [-p <port>] [-i <identifier>]
     aft relay [-p <port>]
     aft <mode> [options ...]";
 const POSITIONAL_ARGS_MSG: &str = "Positional arguments:
