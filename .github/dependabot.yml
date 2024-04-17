@@ -4,11 +4,19 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+    target-branch: master
   - package-ecosystem: "cargo"
     directory: "aft/"
     schedule:
       interval: "daily"
+    target-branch: master
   - package-ecosystem: "cargo"
     directory: "aft-crypto/"
     schedule:
       interval: "daily"
+    target-branch: master
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: daily
+    target-branch: master
