@@ -28,9 +28,9 @@ Allows using a relay instead of two devices connecting to each other directly. I
 aft - file transfer done easily
 
 Usage:
-    aft sender [--address <address>] [--port <port>] <filename>
+    aft sender [--address <address>] [--port <port>] [--identifier <identifier>] <filename>
     aft receiver [-p <port>]
-    aft download -a <address> [-p <port>]
+    aft download -a <address> [-p <port>] [-i <identifier>]
     aft relay [-p <port>]
     aft <mode> [options ...]
 
@@ -44,6 +44,7 @@ Optional arguments:
     -v --verbose VERBOSE        Verbose level. Default is 1 (warnings only). Range 1-3.
     -c --config CONFIG          Config location.
     -v --version                Show version.
+    -e --encryption ALGORITHM   Possbile values: [AES128, AES256].
 ```
 
 # Installation
