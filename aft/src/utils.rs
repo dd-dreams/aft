@@ -189,13 +189,13 @@ impl FileOperations {
     }
 
     /// Computes the checksum of the current file content. Note this will reset the cursor.
-    pub fn compute_checksum(&mut self) -> io::Result<()> {
+    pub fn compute_checksum(&mut self, end_pos: u64) -> io::Result<()> {
         let mut buffer = [0u8; 1024];
 
         self.reset_checksum();
         self.seek_start(0)?;
 
-        while self.file.read(&mut buffer)? != 0 {
+        while self.get_index()? != end_pos && self.file.read(&mut buffer)? != 0 {
             self.update_checksum(&buffer);
         }
 

@@ -267,7 +267,7 @@ where
     pub fn send_chunks(&mut self) -> io::Result<()> {
         let mut file = FileOperations::new(&self.file_path)?;
 
-        if !self.check_starting_checksum(&mut file)? && self.current_pos != 0  {
+        if !self.check_starting_checksum(&mut file, self.current_pos)? && self.current_pos != 0  {
             error!("Checksum not equal.");
             info!("Starting from 0 since the file was modified");
             file.reset_checksum();
@@ -323,7 +323,7 @@ where
         debug!("\nReached EOF");
 
         debug!("Computing checksum ...");
-        file.compute_checksum()?;
+        file.compute_checksum(0)?;
 
         debug!("Ending file transfer and writing checksum");
         buffer[..MAX_CHECKSUM_LEN].copy_from_slice(&file.checksum());
