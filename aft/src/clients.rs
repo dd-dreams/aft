@@ -214,7 +214,6 @@ where
         copy(&mut reader, &mut file.file)?;
 
         if file.len()? <= supposed_len {
-            println!("{} {}", file.len()?, supposed_len);
             error!("The sender has disconnected.");
             return Err(Errors::WrongResponse);
         }
