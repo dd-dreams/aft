@@ -464,7 +464,7 @@ where
         // Exchange secret key with the sender
         self.shared_secret()?;
 
-        Ok(self.download()?)
+        self.download()
     }
 }
 
@@ -559,6 +559,6 @@ where
             return Err(Errors::InvalidPass);
         }
 
-        Ok(self.download()?)
+        self.download()
     }
 }

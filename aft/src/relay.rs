@@ -1,7 +1,6 @@
 //! Handling relay functionality.
 use crate::{
-
-    constants::{CLIENT_RECV, MAX_IDENTIFIER_LEN, RELAY, SIGNAL_LEN, MAX_METADATA_LEN},
+    constants::{CLIENT_RECV, MAX_IDENTIFIER_LEN, RELAY, SIGNAL_LEN},
     utils::{bytes_to_string, Signals},
 };
 use log::{debug, error, info};
