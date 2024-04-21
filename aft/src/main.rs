@@ -176,9 +176,9 @@ fn build_logger(level: &str) {
             let msg;
             let level = record.level();
             if [Level::Warn, Level::Error].contains(&level) {
-                msg = if check_support_ansi() {"\x1B[0;91m [!]\x1B[0;0m]"} else {"[!]"};
+                msg = if check_support_ansi() {"\x1B[0;91m[!]\x1B[0;0m"} else {"[!]"};
             } else {
-                msg = if check_support_ansi() {"\x1B[0;92m [*]\x1B[0;0m]"} else {"[*]"};
+                msg = if check_support_ansi() {"\x1B[0;92m[*]\x1B[0;0m"} else {"[*]"};
             }
             writeln!(buf, "{msg} {}", record.args())
         })
