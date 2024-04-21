@@ -230,7 +230,6 @@ pub fn bytes_to_string(buffer: &[u8]) -> String {
 
 /// Prints a progress bar.
 pub fn progress_bar(pos: u8, max: u8) {
-    io::stdout().flush().unwrap();
     if pos == max {
         // clear screen
         print!("\r\n");
