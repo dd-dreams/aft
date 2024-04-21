@@ -88,15 +88,6 @@ fail2ban only works on relay mode. fail2ban doesn't work on Windows.
 # Building
 Building is really simple: `cargo build --release` and the output will be at `target/release/aft`.
 
-# Comparisons
-This is the section for the people who might ask what is the difference between this program and SFTP or rsync.
-Well, on first hand, there isn't much of a difference. This program and the other two use great encryption algorithms;
-are fast, and reliable (well, at least `aft` tries to be). SFTP and rsync are both great program, but they also have their issues.
-SFTP for example does not feature transfer-continuation if the connection is dropped (built in). And rsync can be a little complex for some
-people.
-
-Both program are excellent, and each one has its own unique benefits, as `aft`.
-
 # License
 Licensed under either of:
 - Apache License, Version 2.0
