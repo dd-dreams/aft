@@ -4,7 +4,7 @@ use sha2::{Digest, Sha256};
 /// Module for various utilities used in other modules.
 use std::{
     fs::{self, File},
-    io::{self, prelude::*, SeekFrom},
+    io::{self, prelude::*, SeekFrom, BufReader, BufWriter},
     net::{Ipv4Addr, TcpStream},
 };
 
@@ -88,7 +88,7 @@ macro_rules! mut_vec {
 
 /// Represents a client file. Provides special methods that are used in this program.
 pub struct FileOperations {
-    pub file: File,
+    pub file: BufWriter<File>,
     hasher: Sha256,
 }
 
@@ -97,7 +97,7 @@ impl FileOperations {
     pub fn new(path: &str) -> io::Result<Self> {
         let file = FileOperations::open_w_file(path)?;
         Ok(FileOperations {
-            file,
+            file: BufWriter::new(file),
             hasher: Sha256::new(),
         })
     }
@@ -108,7 +108,7 @@ impl FileOperations {
     pub fn new_create(path: &str) -> io::Result<Self> {
         let file = FileOperations::create_file(path)?;
         Ok(FileOperations {
-            file,
+            file: BufWriter::new(file),
             hasher: Sha256::new(),
         })
     }
@@ -139,13 +139,6 @@ impl FileOperations {
         Ok(file)
     }
 
-    /// Reads from the file and moves the file cursor.
-    ///
-    /// Returns the position of the file after reading.
-    pub fn read_seek_file(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
-        self.file.read(buffer)
-    }
-
     pub fn write(&mut self, buffer: &[u8]) -> io::Result<()> {
         if !buffer.is_empty() {
             self.file.write_all(buffer)?;
@@ -170,7 +163,7 @@ impl FileOperations {
 
     /// Returns the length of the file.
     pub fn len(&self) -> io::Result<u64> {
-        Ok(self.file.metadata()?.len())
+        Ok(self.file.get_ref().metadata()?.len())
     }
 
     /// Returns whether the file is empty.
@@ -195,8 +188,16 @@ impl FileOperations {
         self.reset_checksum();
         self.seek_start(0)?;
 
-        while self.get_index()? != end_pos && self.file.read(&mut buffer)? != 0 {
-            self.update_checksum(&buffer);
+        let mut reader = BufReader::new(self.file.get_mut());
+        let mut read_bytes = 0;
+
+        loop {
+            let bytes = reader.read(&mut buffer)?;
+            if bytes == 0 || read_bytes == end_pos {
+                break;
+            }
+            read_bytes += bytes as u64;
+            self.hasher.update(&buffer);
         }
 
         Ok(())

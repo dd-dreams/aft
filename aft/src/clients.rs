@@ -134,7 +134,7 @@ impl UserBlocks {
     pub fn check_block(&mut self, ip: &[u8]) -> io::Result<bool> {
         let mut content = Vec::new();
         self.file.seek_start(0)?;
-        self.file.file.read_to_end(&mut content)?;
+        self.file.file.get_mut().read_to_end(&mut content)?;
 
         // Split at newline
         for line in content.split(|i| i == &10u8) {
@@ -211,7 +211,7 @@ where
     fn read_write_data(&mut self, file: &mut FileOperations, supposed_len: u64) -> Result<Vec::<u8>, Errors> {
         info!("Reading file chunks ...");
         let mut reader = BufReader::with_capacity(MAX_CONTENT_LEN, self.get_mut_writer());
-        copy(&mut reader, &mut file.file)?;
+        copy(&mut reader, file.file.get_mut())?;
 
         if file.len()? <= supposed_len {
             error!("The sender has disconnected.");
@@ -221,7 +221,7 @@ where
         file.seek_end(MAX_CONTENT_LEN as i64)?;
 
         let mut checksum = [0; MAX_CHECKSUM_LEN];
-        file.read_seek_file(&mut checksum)?;
+        file.file.get_mut().read_exact(&mut checksum)?;
 
         file.file.set_len(supposed_len)?;
 
@@ -307,7 +307,7 @@ where
         }
 
         let modified_time = metadata["metadata"]["modified"].as_u64().unwrap_or(0);
-        file.file.set_modified(time::SystemTime::UNIX_EPOCH + time::Duration::from_secs(modified_time))?;
+        file.file.get_mut().set_modified(time::SystemTime::UNIX_EPOCH + time::Duration::from_secs(modified_time))?;
 
         FileOperations::rename(&format!("{}/{}/.{}.tmp", get_home_dir(), AFT_DIRNAME, filename), filename)?;
 

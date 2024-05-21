@@ -292,8 +292,9 @@ where
         let mut bytes_sent_sec = 0;
 
         let mut buffer = vec![0; MAX_CONTENT_LEN];
+        let reader = file.file.get_mut();
         loop {
-            let read_size = file.read_seek_file(&mut buffer)?;
+            let read_size = reader.read(&mut buffer)?;
             // If we reached EOF
             if read_size == 0 {
                 break;
