@@ -213,6 +213,10 @@ impl FileOperations {
         self.hasher.reset();
     }
 
+    pub fn set_len(&mut self, len: u64) -> io::Result<()> {
+        self.file.get_mut().set_len(len)
+    }
+
     /// Removes a file.
     pub fn rm(path: &str) -> io::Result<()> {
         fs::remove_file(path)

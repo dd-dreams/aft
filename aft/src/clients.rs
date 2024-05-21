@@ -223,7 +223,7 @@ where
         let mut checksum = [0; MAX_CHECKSUM_LEN];
         file.file.get_mut().read_exact(&mut checksum)?;
 
-        file.file.set_len(supposed_len)?;
+        file.set_len(supposed_len)?;
 
         // Returns the sender's checksum
         Ok(checksum.to_vec())
