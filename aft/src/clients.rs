@@ -529,7 +529,7 @@ where
     /// Authenticates with the sender's end.
     ///
     /// Returns true if the password received from the sender is the correct password, else false.
-    pub fn auth(&mut self, correct_pass: &str) -> io::Result<bool> {
+    pub fn auth(&mut self, correct_pass: SData<String>) -> io::Result<bool> {
         info!("Authenticating ...");
 
         // Sha256 is 256 bits => 256 / 8 => 32
@@ -537,7 +537,7 @@ where
         self.writer.read_ext(&mut pass.0)?;
 
         let mut sha = Sha256::new();
-        sha.update(correct_pass);
+        sha.update(&correct_pass.0);
 
         if pass.0 == sha.finalize().as_slice() {
             self.writer.write_ext(mut_vec!(Signals::OK.as_bytes()))?;
@@ -555,7 +555,7 @@ where
 
         self.shared_secret()?;
 
-        if !self.auth(&pass.0)? {
+        if !self.auth(pass)? {
             return Err(Errors::InvalidPass);
         }
 

@@ -144,10 +144,10 @@ where
         Ok(())
     }
 
-    pub fn auth(&mut self, pass: &str) -> io::Result<bool> {
+    pub fn auth(&mut self, pass: SData<String>) -> io::Result<bool> {
         let pass_hashed = {
             let mut sha = Sha256::new();
-            sha.update(pass);
+            sha.update(&pass.0);
             sha.finalize()
         };
 
@@ -228,7 +228,7 @@ where
             self.shared_secret()?;
         } else {
             self.shared_secret()?;
-            if !self.auth(&pass.0)? {
+            if !self.auth(pass)? {
                 return Err(Errors::InvalidPass);
             }
         }
