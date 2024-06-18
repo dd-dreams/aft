@@ -2,7 +2,7 @@
 use crate::{
     clients::{BaseSocket, Crypto, SWriter},
     constants::{
-        CLIENT_SEND, MAX_CHECKSUM_LEN, MAX_CONTENT_LEN, MAX_METADATA_LEN, RELAY,
+        CLIENT_SEND, CLIENT_RECV, MAX_CHECKSUM_LEN, MAX_CONTENT_LEN, MAX_METADATA_LEN, RELAY,
     },
     errors::Errors,
     utils::{
@@ -157,6 +157,41 @@ where
         Ok(self.read_signal()? == Signals::OK)
     }
 
+    fn relay_init(&mut self, sen_ident: &str, rece_ident: Option<&str>) -> Result<bool, Errors> {
+        if sen_ident.is_empty() || rece_ident.unwrap_or_default().is_empty() {
+            return Err(Errors::InvalidIdent);
+        }
+        debug!("Connected to a relay");
+        if let Some(ident) = rece_ident {
+            if !self.if_relay(ident, sen_ident)? {
+                error!("{ident} not online");
+                return Ok(false);
+            }
+        } else {
+            return Err(Errors::NoReceiverIdentifier);
+        }
+
+        debug!("Signaling to start");
+        // Write to the endpoint to start the transfer
+        self.signal_start()?;
+
+        match self.read_signal_relay()? {
+            Signals::OK => info!("Receiver accepted."),
+            Signals::Error => {
+                error!("Receiver rejected.");
+                return Ok(false);
+            }
+            s => {
+                error!("Received invalid signal: {}", s);
+                return Err(Errors::InvalidSignal);
+            }
+        }
+
+            self.shared_secret()?;
+
+        Ok(true)
+    }
+
     /// Initial connection sends a JSON data formatted, with some metadata.
     /// It will usually look like the following:
     /// ```json
@@ -195,42 +230,19 @@ where
 
         let mut relay_or_receiver = [0u8; 1];
         self.writer.0.read_exact(&mut relay_or_receiver)?;
-        if relay_or_receiver[0] == RELAY {
-            if sen_ident.is_empty() || receiver_identifier.unwrap_or_default().is_empty() {
-                return Err(Errors::InvalidIdent);
-            }
-            debug!("Connected to a relay");
-            if let Some(ident) = receiver_identifier {
-                if !self.if_relay(ident, sen_ident)? {
-                    error!("{ident} not online");
-                    return Ok(false);
+        match relay_or_receiver[0] {
+            RELAY => {
+                if !self.relay_init(sen_ident, receiver_identifier)? {
+                    return Ok(false)
                 }
-            } else {
-                return Err(Errors::NoReceiverIdentifier);
-            }
-
-            debug!("Signaling to start");
-            // Write to the endpoint to start the transfer
-            self.signal_start()?;
-
-            match self.read_signal_relay()? {
-                Signals::OK => info!("Receiver accepted."),
-                Signals::Error => {
-                    error!("Receiver rejected.");
-                    return Ok(false);
+            },
+            CLIENT_RECV => {
+                self.shared_secret()?;
+                if !self.auth(pass)? {
+                    return Err(Errors::InvalidPass);
                 }
-                s => {
-                    error!("Received invalid signal: {}", s);
-                    return Err(Errors::InvalidSignal);
-                }
-            }
-
-            self.shared_secret()?;
-        } else {
-            self.shared_secret()?;
-            if !self.auth(pass)? {
-                return Err(Errors::InvalidPass);
-            }
+            },
+            _ => {error!("Not a relay or a receiver."); return Err(Errors::WrongResponse)}
         }
 
         let parsed = json::object! {
