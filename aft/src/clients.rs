@@ -261,7 +261,9 @@ where
         let sizemb = sizeb / 10_u64.pow(6);
         info!("Incoming {}MB file", sizemb);
 
-        let filename = metadata["metadata"]["filename"].as_str().unwrap_or("null").split('/').last().unwrap_or("null");
+        let filename = metadata["metadata"]["filename"].as_str().unwrap_or("null")
+            .split('/').last().unwrap_or("null")
+            .split('\\').last().unwrap_or("null");
 
         // If a file with the same name exists in the current directory, then exit.
         if FileOperations::is_file_exists(filename) {
