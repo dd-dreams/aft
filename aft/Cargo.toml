@@ -9,7 +9,6 @@ repository = "https://github.com/dd-dreams/aft"
 description = "Transfer files easily and fast."
 readme = "../README.md"
 keywords = ["cli", "peer-to-peer", "relay", "file-transfer", "decentralized"]
-categories = ["relay", "cli", "file-transfer"]
 
 [dependencies]
 tokio = {version = "1", features = ["io-std", "io-util", "net", "sync", "rt-multi-thread", "macros"]}
