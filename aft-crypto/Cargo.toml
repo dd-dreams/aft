@@ -12,6 +12,5 @@ description = "Cryptography library for aft."
 rand_core = {version = "0.6", default-features = false, features=["getrandom"]}
 aes-gcm = "0.10"
 x25519-dalek = "2"
-scrypt = "0.11"
 rand = "0.8"
 zeroize = "1.8"
