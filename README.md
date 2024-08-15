@@ -19,9 +19,10 @@ There are a couple of modes to use with this program:
 The sender is directly connected to the receiver, and the transfer process is happening directly.
 ## Relay
 Allows using a relay instead of two devices connecting to each other directly. It allows a few benefits such as:
-- No port forward needed on the receiver's end.
-- No direct contact between the receiver and the sender.
-- Better privacy - no IP sharing.
+- No port forward needed on the receiver's end;
+- No direct contact between the receiver and the sender;
+- Better privacy - no IP sharing;
+- Ability to block senders.
 
 # Usage
 ```
