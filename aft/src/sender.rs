@@ -18,7 +18,7 @@ use json;
 use log::{debug, error, info, warn};
 use sha2::{Digest, Sha256};
 use std::{
-    io::{self, Read, Write},
+    io::{self, BufReader, BufWriter, Read, Write},
     net::TcpStream,
     path::Path,
     time::SystemTime,
@@ -303,10 +303,17 @@ where
         let mut before = 0;
         let mut bytes_sent_sec = 0;
 
+        // We are using a new writer because of now we use BufWriter instead of TcpStream's "slow"
+        // implementation of writing.
+        let mut new_writer = SWriter(
+            BufWriter::new(self.writer.0.try_clone()?),
+            self.writer.1.clone()
+        );
+
         let mut buffer = vec![0; MAX_CONTENT_LEN];
-        let reader = file.file.get_mut();
+        let mut file_reader = BufReader::new(file.file.get_mut());
         loop {
-            let read_size = reader.read(&mut buffer)?;
+            let read_size = file_reader.read(&mut buffer)?;
             // If we reached EOF
             if read_size == 0 {
                 break;
@@ -315,7 +322,7 @@ where
             bytes_sent_sec += read_size;
             self.current_pos += read_size as u64;
 
-            self.writer.write_ext(&mut buffer)?;
+            new_writer.write_ext(&mut buffer)?;
 
             // Progress bar
             update_pb(&mut curr_bars_count, pb_length, self.current_pos);

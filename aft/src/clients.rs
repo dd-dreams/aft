@@ -41,7 +41,7 @@ fn checks_open_file(filename: &str) -> io::Result<(FileOperations, bool)> {
 }
 
 /// A safe writer. Acts like a normal writer only that it encrypts the connection.
-pub struct SWriter<T, W>(pub W, pub EncAlgo<T>) where W: Read;
+pub struct SWriter<T, W>(pub W, pub EncAlgo<T>);
 
 struct UserBlocks {
     file: FileOperations,
@@ -50,7 +50,7 @@ struct UserBlocks {
 impl<T, W> Write for SWriter<T, W>
 where
     T: AeadInPlace,
-    W: Read + Write,
+    W: Write,
 {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let enc_buf = self.1.encrypt(buf).expect("Could not encrypt.");
@@ -88,7 +88,7 @@ where
 impl<T, W> SWriter<T, W>
 where
     T: AeadInPlace,
-    W: Read + Write,
+    W: Write,
 {
     /// Better implementation of `write`. Instead of creating a new buffer to encrypt to, it writes
     /// and encrypts "in place".
@@ -102,7 +102,13 @@ where
         buf.truncate(buf.len() - AES_GCM_TAG_SIZE - AES_GCM_NONCE_SIZE);
         Ok(())
     }
+}
 
+impl<T, W> SWriter<T, W>
+where
+    T: AeadInPlace,
+    W: Read,
+{
     /// Better implementation of `read`. Instead of creating a new buffer to read to, it reads "in
     /// place".
     ///

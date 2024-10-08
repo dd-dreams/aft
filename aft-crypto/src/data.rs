@@ -3,6 +3,7 @@ pub use aes_gcm::{
     aead::{generic_array::GenericArray, rand_core::RngCore, AeadInPlace, KeyInit, OsRng},
     Aes128Gcm, Aes256Gcm, Nonce,
 };
+use crate::exchange::KEY_LENGTH;
 use zeroize::Zeroize;
 
 pub type Result<T> = core::result::Result<T, EncryptionErrors>;
@@ -107,13 +108,25 @@ where
 
 /// Struct to represent an object to encrypt data with some encryption algorithm.
 pub struct EncAlgo<T> {
+    key: [u8; KEY_LENGTH],
+    encryptor_func: fn(&[u8]) -> T,
     encryptor: T,
 }
 
 impl<T> EncAlgo<T> {
-    pub fn new(key: &[u8], encryptor_func: fn(&[u8]) -> T) -> Self {
-        EncAlgo {
+    pub fn new(key: &[u8; KEY_LENGTH], encryptor_func: fn(&[u8]) -> T) -> Self {
+        Self {
+            key: *key,
+            encryptor_func,
             encryptor: encryptor_func(key),
+        }
+    }
+
+    pub fn clone(&self) -> Self {
+        Self {
+            key: self.key.clone(),
+            encryptor_func: self.encryptor_func,
+            encryptor: (self.encryptor_func)(&self.key),
         }
     }
 }
