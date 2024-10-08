@@ -2,6 +2,7 @@ name: Rust
 
 on:
   push:
+    branches: [ "master" ]
     tags: ["[0-9]+.[0-9]+.[0-9]+"]
     paths-ignore:
       - "LICENSE-MIT"
