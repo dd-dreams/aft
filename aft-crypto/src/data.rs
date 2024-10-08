@@ -121,8 +121,10 @@ impl<T> EncAlgo<T> {
             encryptor: encryptor_func(key),
         }
     }
+}
 
-    pub fn clone(&self) -> Self {
+impl<T> Clone for EncAlgo<T> {
+    fn clone(&self) -> Self {
         Self {
             key: self.key.clone(),
             encryptor_func: self.encryptor_func,
