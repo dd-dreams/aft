@@ -197,7 +197,7 @@ impl FileOperations {
                 break;
             }
             read_bytes += bytes as u64;
-            self.hasher.update(&buffer);
+            self.hasher.update(buffer);
         }
 
         Ok(())
