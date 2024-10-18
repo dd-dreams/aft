@@ -64,7 +64,7 @@ where
         let mut encrypted_data = data.to_vec();
         self.encrypt_in_place(&mut encrypted_data)?;
 
-        Ok(encrypted_data.to_vec())
+        Ok(encrypted_data)
     }
 
     /// Decrypt data without changing the original data.
@@ -72,7 +72,7 @@ where
         let mut decrypted_data = data.to_vec();
         self.decrypt_in_place(&mut decrypted_data, nonce)?;
 
-        Ok(decrypted_data.to_vec())
+        Ok(decrypted_data)
     }
 
     /// Encrypt data in-place.
