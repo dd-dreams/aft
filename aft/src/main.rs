@@ -38,7 +38,7 @@ const OPTIONS_ARGS_MSG: &str = "Optional arguments:
     -v --verbose VERBOSE        Verbose level. Default is 1 (warnings only). Range 1-3.
     -c --config CONFIG          Config location.
     -v --version                Show version.
-    -e --encryption ALGORITHM   Possbile values: [AES128, AES256].";
+    -e --encryption ALGORITHM   Possible values: [AES128, AES256].";
 const PASSPHRASE_DEFAULT_LEN: u8 = 6;
 
 macro_rules! create_sender {
@@ -365,7 +365,7 @@ async fn main() {
         };
 
         match res {
-            Ok(b) => if b {info!("Finished succesfully.")},
+            Ok(b) => if b {info!("Finished successfully.")},
             Err(e) => error!("{}", e),
         }
     } else if cliargs.mode == DOWNLOAD_MODE {
@@ -386,7 +386,7 @@ async fn main() {
         };
 
         match res {
-            Ok(b) => if b {info!("Finished succesfully.")},
+            Ok(b) => if b {info!("Finished successfully.")},
             Err(e) => error!("{}", e),
         }
     } else if cliargs.mode == SENDER_MODE {

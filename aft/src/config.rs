@@ -39,17 +39,17 @@ impl Config {
         let mut mode = Options::None;
 
         for (index, line) in content.lines().enumerate() {
-            let line_splitted: Vec<&str> = line.split(DELIMITER).collect();
+            let line_split: Vec<&str> = line.split(DELIMITER).collect();
             // "option = value"
-            if line_splitted.len() != 2 || !OPTIONS.contains(&line_splitted[0]) {
+            if line_split.len() != 2 || !OPTIONS.contains(&line_split[0]) {
                 error!("Bad syntax, line: {}", index);
                 return Err(ErrorsConfig::WrongSyntax);
             }
 
-            match line_splitted[0].to_lowercase().as_str().trim() {
+            match line_split[0].to_lowercase().as_str().trim() {
                 VERBOSE_OPTION => {
                     if let Options::None = verbose {
-                        let value = Config::get_char_val(&line_splitted, index)?;
+                        let value = Config::get_char_val(&line_split, index)?;
                         if value > '0' && value < '3' {
                             // safe to unwrap because we checked if its a digit or not
                             verbose = Options::Verbose(value.to_digit(10).unwrap() as u8);
@@ -61,7 +61,7 @@ impl Config {
                 }
                 IDENTIFIER_OPTION => {
                     if let Options::None = identifier {
-                        identifier = Options::Identifier(line_splitted[1].to_string());
+                        identifier = Options::Identifier(line_split[1].to_string());
                     } else {
                         error!("Already assigned a value, line: {}", index);
                         return Err(ErrorsConfig::WrongSyntax);
@@ -69,7 +69,7 @@ impl Config {
                 }
                 MODE_OPTION => {
                     if let Options::None = mode {
-                        let value = Config::get_char_val(&line_splitted, index)?;
+                        let value = Config::get_char_val(&line_split, index)?;
                         // modes: 1=client, 2=receiver, 3=download and 4=relay.
                         if value > '0' && value < '5' {
                             // safe to unwrap because we checked if its a digit or not

@@ -4,7 +4,7 @@ The transferring process on both modes is basically the same, only the differenc
 
 The main benefit between the two modes is not needing to open a port so you can accept files. Opening a port can be problematic since some ISP's do not allow it because they use NAT, or you just don't want to risk yourself with a port always open on your device. Relay mode also hides your IP from the sender. For example when you accept a file from some stranger, you don't want them to know your IP.
 
-## The protocol - techincal
+## The protocol - technical
 When the sender connects to some address, it needs to know whether it's a relay or not. So the first thing the sender does is reading 1 byte and checking if it's a relay. If it is, it will initiate relay mode. Otherwise P2P mode.
 
 ## Relay mode
@@ -35,7 +35,7 @@ Before we discuss the second handshake, we will discuss the first handshake for 
 When the sender connects to the receiver, the receiver will write 1 byte indicating he is a receiver and not a relay. After that, they initiate the second handshake (discussed later).
 
 ### Step two - acceptance
-The receiver should have a SHA-256 hashed password ready (or hashed later) for authentication. When the connection is encrypted, the sender will write his persumed authentication password, which is SHA-256 hashed, and the receiver will compare it to his hash. If they match, the receiver will signal the sender he can start the transfer. Otherwise, they will disconnect from each other.
+The receiver should have a SHA-256 hashed password ready (or hashed later) for authentication. When the connection is encrypted, the sender will write his presumed authentication password, which is SHA-256 hashed, and the receiver will compare it to his hash. If they match, the receiver will signal the sender he can start the transfer. Otherwise, they will disconnect from each other.
 
 ## Second handshake - public keys exchange
 From now on, both modes act in the same way exactly, only that the relay server will forward the requests from the sender to the receiver and otherway.

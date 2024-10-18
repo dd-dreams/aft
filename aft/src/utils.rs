@@ -18,7 +18,7 @@ pub enum Signals {
     OK,
     /// Error.
     Error,
-    /// Unspecific signal. Customized by the enviornment.
+    /// Unspecific signal. Customized by the environment.
     Other,
     /// Unknown signal.
     Unknown,
