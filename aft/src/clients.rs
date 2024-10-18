@@ -71,7 +71,7 @@ where
         let mut read_buf = Vec::with_capacity(buf.len() + AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE);
 
         let bytes_read =
-            (&mut self.0).take((buf.len() + AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE) as u64).read_to_end(&mut read_buf)?;
+            (&mut self.0).take((buf.len() + AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE) as u64).read(&mut read_buf)?;
 
         if bytes_read == 0 {
             return Ok(0)
