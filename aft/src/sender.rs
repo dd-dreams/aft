@@ -7,20 +7,22 @@ use crate::{
     errors::Errors,
     utils::{
         download_speed, error_other, mut_vec, progress_bar, send_identifier, FileOperations,
-        Signals,
+        Signals
     },
 };
 use aft_crypto::{
-    data::{AeadInPlace, EncAlgo, SData},
+    data::{AeadInPlace, EncAlgo, EncryptorBase, SData},
     exchange::{PublicKey, KEY_LENGTH},
 };
 use json;
 use log::{debug, error, info, warn};
+use rayon::prelude::*;
 use sha2::{Digest, Sha256};
 use std::{
     io::{self, BufReader, BufWriter, Read, Write},
     net::TcpStream,
     path::Path,
+    sync::{Arc, Mutex},
     time::SystemTime,
 };
 
@@ -57,7 +59,7 @@ pub struct Sender<T> {
 
 impl<T> BaseSocket<T> for Sender<T>
 where
-    T: AeadInPlace,
+    T: AeadInPlace + Sync,
 {
     fn get_writer(&self) -> &SWriter<T, TcpStream> {
         &self.writer
@@ -91,7 +93,7 @@ impl<T> Crypto for Sender<T> {
 
 impl<T> Sender<T>
 where
-    T: AeadInPlace,
+    T: AeadInPlace + Sync,
 {
     /// Constructs a new Sender struct, and connects to `remote_ip`.
     pub fn new(remote_addr: &str, encryptor_func: fn(&[u8]) -> T) -> Self {
@@ -187,7 +189,7 @@ where
             }
         }
 
-            self.shared_secret()?;
+        self.shared_secret()?;
 
         Ok(true)
     }
@@ -289,9 +291,10 @@ where
             file.seek_start(self.current_pos)?;
         }
 
+        let file_size = file.len()?;
         let mut curr_bars_count = 0u8;
         // Add a new bar to progress bar when x bytes have been transferred
-        let pb_length = file.len()? / 50;
+        let pb_length = file_size / 50;
 
         debug!("Writing chunks");
         info!("Sending file ...");
@@ -305,14 +308,13 @@ where
 
         // We are using a new writer because of now we use BufWriter instead of TcpStream's "slow"
         // implementation of writing.
-        let mut new_writer = SWriter(
-            BufWriter::new(self.writer.0.try_clone()?),
-            self.writer.1.clone()
-        );
+        let mut new_writer = BufWriter::new(self.writer.0.try_clone()?);
 
         let mut buffer = vec![0; MAX_CONTENT_LEN];
         let mut file_reader = BufReader::new(file.file.get_mut());
-        loop {
+        let writes = Arc::new(Mutex::new(Vec::new()));
+
+        while self.current_pos != file_size {
             let read_size = file_reader.read(&mut buffer)?;
             // If we reached EOF
             if read_size == 0 {
@@ -322,7 +324,17 @@ where
             bytes_sent_sec += read_size;
             self.current_pos += read_size as u64;
 
-            new_writer.write_ext(&mut buffer)?;
+            buffer.par_chunks_exact(MAX_CONTENT_LEN).for_each(|chunk| {
+                let encrypted_chunk = self.writer.1.encrypt(chunk).expect("Could not encrypt");
+                writes.lock().expect("Could not lock Mutex").push(encrypted_chunk);
+            });
+
+            let mut writes_unlocked = writes.lock().expect("Could not lock Mutex");
+            for chunk in writes_unlocked.iter() {
+                new_writer.write_all(chunk)?;
+            }
+
+            writes_unlocked.clear();
 
             // Progress bar
             update_pb(&mut curr_bars_count, pb_length, self.current_pos);
@@ -343,7 +355,7 @@ where
         debug!("\nReached EOF");
 
         debug!("Computing checksum ...");
-        file.compute_checksum(0)?;
+        file.compute_checksum(u64::MAX)?;
 
         debug!("Ending file transfer and writing checksum");
         buffer[..MAX_CHECKSUM_LEN].copy_from_slice(&file.checksum());

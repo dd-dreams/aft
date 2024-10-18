@@ -15,10 +15,12 @@ use aft_crypto::{
     exchange::{PublicKey, X25519Key, KEY_LENGTH},
 };
 use log::{debug, error, info};
+use rayon::prelude::*;
 use sha2::{Digest, Sha256};
 use std::{
-    io::{self, copy, BufReader, Read, Write},
+    io::{self, BufReader, Read, Write},
     net::{TcpListener, TcpStream},
+    sync::{Arc, Mutex},
     time,
 };
 
@@ -160,7 +162,7 @@ impl UserBlocks {
 
 pub trait BaseSocket<T>
 where
-    T: AeadInPlace,
+    T: AeadInPlace + Sync,
 {
     /// Returns the writer used in the connection.
     fn get_writer(&self) -> &SWriter<T, TcpStream>;
@@ -216,12 +218,30 @@ where
     /// Returns the file-checksum of the sender's.
     fn read_write_data(&mut self, file: &mut FileOperations, supposed_len: u64) -> Result<Vec::<u8>, Errors> {
         info!("Reading file chunks ...");
-        let mut reader = BufReader::with_capacity(MAX_CONTENT_LEN, self.get_mut_writer());
-        copy(&mut reader, file.file.get_mut())?;
+        let mut buffer = [0; MAX_CONTENT_LEN + AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE];
+        let encryptor = self.get_writer().1.clone();
+        let mut reader = BufReader::with_capacity(buffer.len(), self.get_mut_writer().0.try_clone()?);
+        let writes = Arc::new(Mutex::new(Vec::new()));
 
-        if file.len()? <= supposed_len {
-            error!("The sender has disconnected.");
-            return Err(Errors::WrongResponse);
+        loop {
+            let read_bytes = reader.read(&mut buffer)?;
+            if read_bytes == 0 {
+                break;
+            }
+
+            buffer.par_chunks_exact(MAX_CONTENT_LEN + AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE).for_each(|chunk| {
+                let decrypted_chunk = encryptor.decrypt(
+                    &chunk[..chunk.len()-AES_GCM_NONCE_SIZE], &chunk[chunk.len()-AES_GCM_NONCE_SIZE..])
+                    .expect("Could not decrypt");
+                writes.lock().expect("Could not lock Mutex").push(decrypted_chunk);
+            });
+
+            let mut writes_unlocked = writes.lock().expect("Could not lock Mutex");
+            for chunk in writes_unlocked.iter() {
+                file.write(chunk)?;
+            }
+
+            writes_unlocked.clear();
         }
 
         file.seek_end(MAX_CONTENT_LEN as i64)?;
@@ -303,7 +323,7 @@ where
         let recv_checksum = self.read_write_data(&mut file, sizeb)?;
 
         info!("Computing checksum ...");
-        file.compute_checksum(0)?;
+        file.compute_checksum(u64::MAX)?;
 
         // If the checksum isn't good
         if recv_checksum != file.checksum()
@@ -352,7 +372,7 @@ pub struct Downloader<T> {
 
 impl<T> BaseSocket<T> for Downloader<T>
 where
-    T: AeadInPlace,
+    T: AeadInPlace + Sync,
 {
     fn get_writer(&self) -> &SWriter<T, TcpStream> {
         &self.writer
@@ -389,7 +409,7 @@ where
 
 impl<T> Downloader<T>
 where
-    T: AeadInPlace,
+    T: AeadInPlace + Sync,
 {
     /// Constructor. Connects to `remote_ip` automatically.
     pub fn new(remote_ip: &str, ident: String, encryptor_func: fn(&[u8]) -> T) -> Self {
@@ -483,7 +503,7 @@ pub struct Receiver<T> {
 
 impl<T> BaseSocket<T> for Receiver<T>
 where
-    T: AeadInPlace,
+    T: AeadInPlace + Sync,
 {
     fn get_writer(&self) -> &SWriter<T, TcpStream> {
         &self.writer
@@ -520,7 +540,7 @@ where
 
 impl<T> Receiver<T>
 where
-    T: AeadInPlace,
+    T: AeadInPlace + Sync,
 {
     /// Constructor. Creates a listener on `addr` automatically.
     pub fn new(addr: &str, encryptor_func: fn(&[u8]) -> T) -> Self {
