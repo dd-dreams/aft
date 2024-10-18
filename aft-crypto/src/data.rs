@@ -60,7 +60,7 @@ where
     CiAlgo: AeadInPlace,
 {
     /// Encrypt data without changing the original data.
-    fn encrypt(&mut self, data: &[u8]) -> Result<Vec<u8>> {
+    fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>> {
         let mut encrypted_data = data.to_vec();
         self.encrypt_in_place(&mut encrypted_data)?;
 
@@ -68,7 +68,7 @@ where
     }
 
     /// Decrypt data without changing the original data.
-    fn decrypt(&mut self, data: &[u8], nonce: &[u8]) -> Result<Vec<u8>> {
+    fn decrypt(&self, data: &[u8], nonce: &[u8]) -> Result<Vec<u8>> {
         let mut decrypted_data = data.to_vec();
         self.decrypt_in_place(&mut decrypted_data, nonce)?;
 
@@ -76,7 +76,7 @@ where
     }
 
     /// Encrypt data in-place.
-    fn encrypt_in_place(&mut self, data: &mut Vec<u8>) -> Result<()> {
+    fn encrypt_in_place(&self, data: &mut Vec<u8>) -> Result<()> {
         // The nonce is 12 bytes (96 bits) long.
         // According to NIST 38D, 12 bytes should be used for efficiency and simplicity.
         let mut nonce = vec![0; AES_GCM_NONCE_SIZE];
@@ -94,7 +94,7 @@ where
     }
 
     /// Decrypt data in-place.
-    fn decrypt_in_place(&mut self, data: &mut Vec<u8>, nonce: &[u8]) -> Result<()> {
+    fn decrypt_in_place(&self, data: &mut Vec<u8>, nonce: &[u8]) -> Result<()> {
         let nonce = Nonce::from_slice(nonce);
         if self.get_encryptor().decrypt_in_place(nonce, b"", data).is_err() {
             return Err(EncryptionErrors::FailedDecrypt);
