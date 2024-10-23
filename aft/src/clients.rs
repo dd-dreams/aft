@@ -317,12 +317,12 @@ where
         info!("Computing checksum ...");
         file.compute_checksum(u64::MAX)?;
 
-        // If the checksum isn't good
-        if recv_checksum != file.checksum()
-            && get_accept_input("Keep the file? ").expect("Couldn't read answer") != 'y'
-        {
+        // If the checksum isn't valid
+        if recv_checksum != file.checksum() {
             error!("Checksum not equal.");
-            FileOperations::rm(&format!("{}/{}/.{}.tmp", get_home_dir(), AFT_DIRNAME, filename))?;
+            if get_accept_input("Keep the file? ").expect("Couldn't read answer") != 'y' {
+                FileOperations::rm(&format!("{}/{}/.{}.tmp", get_home_dir(), AFT_DIRNAME, filename))?;
+            }
             return Ok(false);
         }
 
