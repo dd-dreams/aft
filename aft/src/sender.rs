@@ -353,8 +353,7 @@ where
         file.compute_checksum(u64::MAX)?;
 
         debug!("Ending file transfer and writing checksum");
-        buffer[..MAX_CHECKSUM_LEN].copy_from_slice(&file.checksum());
-        self.writer.write_ext(&mut buffer)?;
+        self.writer.write_ext(&mut file.checksum())?;
 
         self.writer.0.shutdown(std::net::Shutdown::Write)?;
 
