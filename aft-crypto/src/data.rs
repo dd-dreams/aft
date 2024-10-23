@@ -55,6 +55,16 @@ macro_rules! create_aes_gcm_encryptor {
     }};
 }
 
+#[macro_export]
+/// Quickly decrypt AES-GCM data.
+macro_rules! decrypt_aes_gcm {
+    ($encryptor:expr, $data:expr) => {
+        $encryptor.decrypt(
+            &$data[..$data.len()-AES_GCM_NONCE_SIZE], &$data[$data.len()-AES_GCM_NONCE_SIZE..])
+            .expect("Could not decrypt")
+    }
+} pub use decrypt_aes_gcm;
+
 pub trait EncryptorBase<CiAlgo>
 where
     CiAlgo: AeadInPlace,

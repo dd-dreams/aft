@@ -2,7 +2,7 @@
 use crate::{
     clients::{BaseSocket, Crypto, SWriter},
     constants::{
-        CLIENT_SEND, CLIENT_RECV, MAX_CHECKSUM_LEN, MAX_CONTENT_LEN, MAX_METADATA_LEN, RELAY,
+        CLIENT_SEND, CLIENT_RECV, MAX_CONTENT_LEN, MAX_METADATA_LEN, RELAY,
     },
     errors::Errors,
     utils::{
@@ -19,10 +19,9 @@ use log::{debug, error, info, warn};
 use rayon::prelude::*;
 use sha2::{Digest, Sha256};
 use std::{
-    io::{self, BufReader, BufWriter, Read, Write},
+    io::{self, BufReader, BufWriter, Read, Write, IoSlice},
     net::TcpStream,
     path::Path,
-    sync::{Arc, Mutex},
     time::SystemTime,
 };
 
@@ -310,9 +309,8 @@ where
         // implementation of writing.
         let mut new_writer = BufWriter::new(self.writer.0.try_clone()?);
 
-        let mut buffer = vec![0; MAX_CONTENT_LEN];
+        let mut buffer = vec![0; 2 * MAX_CONTENT_LEN];
         let mut file_reader = BufReader::new(file.file.get_mut());
-        let writes = Arc::new(Mutex::new(Vec::new()));
 
         while self.current_pos != file_size {
             let read_size = file_reader.read(&mut buffer)?;
@@ -324,17 +322,14 @@ where
             bytes_sent_sec += read_size;
             self.current_pos += read_size as u64;
 
-            buffer.par_chunks_exact(MAX_CONTENT_LEN).for_each(|chunk| {
-                let encrypted_chunk = self.writer.1.encrypt(chunk).expect("Could not encrypt");
-                writes.lock().expect("Could not lock Mutex").push(encrypted_chunk);
-            });
+            let encrypted_buffer: Vec<Vec<u8>> = buffer.par_chunks_exact(MAX_CONTENT_LEN).map(|chunk|
+                self.writer.1.encrypt(chunk).expect("Could not encrypt")
+                ).collect();
+            let io_sliced_buf: Vec<IoSlice> = encrypted_buffer.iter()
+                .map(|x| IoSlice::new(x)).collect();
 
-            let mut writes_unlocked = writes.lock().expect("Could not lock Mutex");
-            for chunk in writes_unlocked.iter() {
-                new_writer.write_all(chunk)?;
-            }
-
-            writes_unlocked.clear();
+            // TODO: Hopefully anytime soon `write_all_vectored` will be stabilized
+            let _read_bytes = new_writer.write_vectored(&io_sliced_buf)?;
 
             // Progress bar
             update_pb(&mut curr_bars_count, pb_length, self.current_pos);

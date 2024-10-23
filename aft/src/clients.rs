@@ -11,16 +11,16 @@ use crate::{
     },
 };
 use aft_crypto::{
-    data::{AeadInPlace, EncAlgo, EncryptorBase, SData, AES_GCM_NONCE_SIZE, AES_GCM_TAG_SIZE},
+
+    data::{AeadInPlace, EncAlgo, EncryptorBase, SData, AES_GCM_NONCE_SIZE, AES_GCM_TAG_SIZE, decrypt_aes_gcm},
     exchange::{PublicKey, X25519Key, KEY_LENGTH},
 };
 use log::{debug, error, info};
 use rayon::prelude::*;
 use sha2::{Digest, Sha256};
 use std::{
-    io::{self, BufReader, Read, Write},
+    io::{self, BufReader, Read, Write, IoSlice},
     net::{TcpListener, TcpStream},
-    sync::{Arc, Mutex},
     time,
 };
 
@@ -218,41 +218,33 @@ where
     /// Returns the file-checksum of the sender's.
     fn read_write_data(&mut self, file: &mut FileOperations, supposed_len: u64) -> Result<Vec::<u8>, Errors> {
         info!("Reading file chunks ...");
-        let mut buffer = [0; MAX_CONTENT_LEN + AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE];
+        const AES_ADD: usize = AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE;
+        const CHUNK_SIZE: usize = MAX_CONTENT_LEN + AES_ADD;
+        let mut buffer = [0; 2 * CHUNK_SIZE];
         let encryptor = self.get_writer().1.clone();
         let mut reader = BufReader::with_capacity(buffer.len(), self.get_mut_writer().0.try_clone()?);
-        let writes = Arc::new(Mutex::new(Vec::new()));
 
         loop {
-            let read_bytes = reader.read(&mut buffer)?;
-            if read_bytes == 0 {
+            let bytes_read = reader.read(&mut buffer)?;
+            if bytes_read == MAX_CHECKSUM_LEN + AES_ADD {
                 break;
             }
 
-            buffer.par_chunks_exact(MAX_CONTENT_LEN + AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE).for_each(|chunk| {
-                let decrypted_chunk = encryptor.decrypt(
-                    &chunk[..chunk.len()-AES_GCM_NONCE_SIZE], &chunk[chunk.len()-AES_GCM_NONCE_SIZE..])
-                    .expect("Could not decrypt");
-                writes.lock().expect("Could not lock Mutex").push(decrypted_chunk);
-            });
+            let decrypted_buffer: Vec<Vec<u8>> = buffer.par_chunks_exact(CHUNK_SIZE).map(|chunk|
+                decrypt_aes_gcm!(encryptor, chunk)
+                ).collect();
+            let io_sliced_buf: Vec<IoSlice> = decrypted_buffer.iter()
+                .map(|x| IoSlice::new(x)).collect();
 
-            let mut writes_unlocked = writes.lock().expect("Could not lock Mutex");
-            for chunk in writes_unlocked.iter() {
-                file.write(chunk)?;
-            }
-
-            writes_unlocked.clear();
+            let _read_bytes = file.file.write_vectored(&io_sliced_buf)?;
         }
-
-        file.seek_end(MAX_CONTENT_LEN as i64)?;
-
-        let mut checksum = [0; MAX_CHECKSUM_LEN];
-        file.file.get_mut().read_exact(&mut checksum)?;
 
         file.set_len(supposed_len)?;
 
         // Returns the sender's checksum
-        Ok(checksum.to_vec())
+        Ok(
+            decrypt_aes_gcm!(self.get_writer().1, buffer[..MAX_CHECKSUM_LEN + AES_ADD])
+            )
     }
 
     /// Returns true if checksums are equal, false if they're not.
