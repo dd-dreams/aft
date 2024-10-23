@@ -38,7 +38,8 @@ const OPTIONS_ARGS_MSG: &str = "Optional arguments:
     -v --verbose VERBOSE        Verbose level. Default is 1 (warnings only). Range 1-3.
     -c --config CONFIG          Config location.
     -v --version                Show version.
-    -e --encryption ALGORITHM   Possible values: [AES128, AES256].";
+    -e --encryption ALGORITHM   Possible values: [AES128, AES256].
+    -t --threads THREADS        Number of threads to use.";
 const PASSPHRASE_DEFAULT_LEN: u8 = 6;
 
 macro_rules! create_sender {
@@ -53,7 +54,7 @@ macro_rules! create_sender {
                 Ok(b) => if !b {return;},
                 Err(e) => {error!("{e}"); return;}
             }
-            if let Err(e) = sender.send_chunks() {
+            if let Err(e) = sender.send_chunks($cliargs.threads) {
                 error!("Connection error: {}", e);
             }
         }
@@ -67,7 +68,8 @@ struct CliArgs<'a> {
     identifier: Option<&'a str>,
     verbose: u8,
     filename: &'a str,
-    algo: Algo
+    algo: Algo,
+    threads: usize
 }
 
 impl<'a> CliArgs<'a> {
@@ -80,6 +82,9 @@ impl<'a> CliArgs<'a> {
             verbose: 1,
             filename: "",
             algo: Algo::Aes128,
+            // SAFETY: 4 != 0
+            threads: std::thread::available_parallelism()
+                .unwrap_or(std::num::NonZero::new(4).unwrap()).get()
         }
     }
 
@@ -130,6 +135,14 @@ impl<'a> CliArgs<'a> {
 
     pub fn set_algo(&mut self, algo: &str) {
         self.algo = algo.to_lowercase().as_str().into();
+    }
+
+    pub fn set_threads(&mut self, threads: usize) -> bool {
+        if threads == 0 {
+            return false;
+        }
+        self.threads = threads;
+        true
     }
 }
 
@@ -332,6 +345,11 @@ async fn main() {
             cliargs.set_algo(&args[i+1]);
         } else if cliargs.is_sender() && i == args.len() - 1 {
             cliargs.set_filename(args.last().expect("No filename provided."));
+        } else if ["--threads", "-t"].contains(&arg.as_str()) {
+            if !cliargs.set_threads(args[i+1].parse().expect("Invalid threads input")) {
+                println!("Invalid number of threads");
+                return;
+            }
         } else {
             println!("Unknown argument {}", arg);
             return;
@@ -360,8 +378,10 @@ async fn main() {
         info!("Running receiver");
 
         let res = match cliargs.algo {
-            Algo::Aes128 => clients::Receiver::new(&format!("0.0.0.0:{}", cliargs.port), create_128_encryptor).receive(pass),
-            Algo::Aes256 => clients::Receiver::new(&format!("0.0.0.0:{}", cliargs.port), create_256_encryptor).receive(pass),
+            Algo::Aes128 =>
+                clients::Receiver::new(&format!("0.0.0.0:{}", cliargs.port), create_128_encryptor).receive(pass, cliargs.threads),
+            Algo::Aes256 =>
+                clients::Receiver::new(&format!("0.0.0.0:{}", cliargs.port), create_256_encryptor).receive(pass, cliargs.threads),
         };
 
         match res {
@@ -381,8 +401,8 @@ async fn main() {
 
         let addr = &format!("{}:{}",cliargs.address.expect("No address specified"), cliargs.port);
         let res = match cliargs.algo {
-            Algo::Aes128 => clients::Downloader::new(addr, identifier, create_128_encryptor).init(),
-            Algo::Aes256=> clients::Downloader::new(addr, identifier, create_256_encryptor).init(),
+            Algo::Aes128 => clients::Downloader::new(addr, identifier, create_128_encryptor).init(cliargs.threads),
+            Algo::Aes256=> clients::Downloader::new(addr, identifier, create_256_encryptor).init(cliargs.threads),
         };
 
         match res {

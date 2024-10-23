@@ -216,19 +216,16 @@ where
     /// Only the receiver uses this method.
     ///
     /// Returns the file-checksum of the sender's.
-    fn read_write_data(&mut self, file: &mut FileOperations, supposed_len: u64) -> Result<Vec::<u8>, Errors> {
+    fn read_write_data(&mut self, file: &mut FileOperations, supposed_len: u64, num_threads: usize) -> Result<Vec::<u8>, Errors> {
         info!("Reading file chunks ...");
         const AES_ADD: usize = AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE;
         const CHUNK_SIZE: usize = MAX_CONTENT_LEN + AES_ADD;
-        let mut buffer = [0; 2 * CHUNK_SIZE];
+        let mut buffer = vec![0; num_threads * CHUNK_SIZE];
         let encryptor = self.get_writer().1.clone();
         let mut reader = BufReader::with_capacity(buffer.len(), self.get_mut_writer().0.try_clone()?);
 
-        loop {
-            let bytes_read = reader.read(&mut buffer)?;
-            if bytes_read == MAX_CHECKSUM_LEN + AES_ADD {
-                break;
-            }
+        while file.len()? <= supposed_len {
+            reader.read_exact(&mut buffer)?;
 
             let decrypted_buffer: Vec<Vec<u8>> = buffer.par_chunks_exact(CHUNK_SIZE).map(|chunk|
                 decrypt_aes_gcm!(encryptor, chunk)
@@ -239,11 +236,14 @@ where
             let _read_bytes = file.file.write_vectored(&io_sliced_buf)?;
         }
 
+        let mut checksum = [0; MAX_CHECKSUM_LEN + AES_ADD];
+        reader.read_exact(&mut checksum)?;
+
         file.set_len(supposed_len)?;
 
         // Returns the sender's checksum
         Ok(
-            decrypt_aes_gcm!(self.get_writer().1, buffer[..MAX_CHECKSUM_LEN + AES_ADD])
+            decrypt_aes_gcm!(self.get_writer().1, checksum)
             )
     }
 
@@ -271,7 +271,7 @@ where
     /// The main function for downloading in a P2P mode (sender -> receiver) or from a relay.
     ///
     /// Returns false if the checksum step failed.
-    fn download(&mut self) -> Result<bool, Errors> {
+    fn download(&mut self, num_threads: usize) -> Result<bool, Errors> {
         debug!("Getting metadata");
         let metadata = self.read_metadata()?;
 
@@ -312,7 +312,7 @@ where
 
         let filename = metadata["metadata"]["filename"].as_str().unwrap_or("null");
 
-        let recv_checksum = self.read_write_data(&mut file, sizeb)?;
+        let recv_checksum = self.read_write_data(&mut file, sizeb, num_threads)?;
 
         info!("Computing checksum ...");
         file.compute_checksum(u64::MAX)?;
@@ -424,7 +424,7 @@ where
     }
 
     /// The main method when connecting to a relay. Handles the transferring process.
-    pub fn init(&mut self) -> Result<bool, Errors> {
+    pub fn init(&mut self, num_threads: usize) -> Result<bool, Errors> {
         if !self.is_connected_to_relay()? {
             return Err(Errors::NotRelay);
         }
@@ -484,7 +484,7 @@ where
         // Exchange secret key with the sender
         self.shared_secret()?;
 
-        self.download()
+        self.download(num_threads)
     }
 }
 
@@ -569,7 +569,7 @@ where
     }
 
     /// The main function for receiving in P2P mode (sender -> receiver).
-    pub fn receive(&mut self, pass: SData<String>) -> Result<bool, Errors> {
+    pub fn receive(&mut self, pass: SData<String>, num_threads: usize) -> Result<bool, Errors> {
         // Write to the sender that its connecting to a receiver
         self.writer.0.write_all(&[CLIENT_RECV])?;
 
@@ -579,6 +579,6 @@ where
             return Err(Errors::InvalidPass);
         }
 
-        self.download()
+        self.download(num_threads)
     }
 }

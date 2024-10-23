@@ -277,7 +277,7 @@ where
     /// After the *initial connection*, we send chunks. Every chunk is data from the file.
     ///
     /// Returns error when a connection error has occurred.
-    pub fn send_chunks(&mut self) -> io::Result<()> {
+    pub fn send_chunks(&mut self, num_threads: usize) -> io::Result<()> {
         let mut file = FileOperations::new(&self.file_path)?;
 
         if !self.check_starting_checksum(&mut file, self.current_pos)? && self.current_pos != 0  {
@@ -309,7 +309,7 @@ where
         // implementation of writing.
         let mut new_writer = BufWriter::new(self.writer.0.try_clone()?);
 
-        let mut buffer = vec![0; 2 * MAX_CONTENT_LEN];
+        let mut buffer = vec![0; num_threads * MAX_CONTENT_LEN];
         let mut file_reader = BufReader::new(file.file.get_mut());
 
         while self.current_pos != file_size {
