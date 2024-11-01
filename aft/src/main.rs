@@ -1,9 +1,12 @@
 //! Main.
+#[cfg(feature = "clients")]
 pub mod clients;
 pub mod config;
 pub mod constants;
 pub mod errors;
+#[cfg(feature = "relay")]
 pub mod relay;
+#[cfg(feature = "sender")]
 pub mod sender;
 pub mod utils;
 
@@ -14,7 +17,6 @@ use aft_crypto::{
 };
 use config::Config;
 use log::{error, info, Level};
-use sender::Sender;
 use std::{env::args as args_fn, io::Write, net::{Ipv4Addr, ToSocketAddrs}};
 
 const SENDER_MODE: u8 = 1;
@@ -46,7 +48,7 @@ const PASSPHRASE_DEFAULT_LEN: u8 = 6;
 macro_rules! create_sender {
     ($algo:ident, $cliargs:ident, $sen_ident:expr, $addr:ident, $pass:ident) => {
         {
-            let mut sender = Sender::new($addr, $algo, $cliargs.checksum);
+            let mut sender = sender::Sender::new($addr, $algo, $cliargs.checksum);
 
             let init = sender.init($cliargs.filename, $sen_ident,
                     $cliargs.identifier, $pass);
@@ -256,9 +258,14 @@ fn create_aft_dir() -> std::io::Result<()> {
     std::fs::create_dir(path)
 }
 
-/// Main CLI function.
+#[cfg(feature = "relay")]
 #[tokio::main]
-async fn main() {
+async fn run_relay(port: u16) {
+    info!("Running relay");
+    relay::init(&format!("0.0.0.0:{}", port)).await.unwrap();
+}
+
+fn main() {
     let args: Vec<String> = args_fn().collect();
     if args.len() == 1 || args.len() > 9 {
         println!("{}\n\n{}\n\n{}\n{}", DESCR_MSG, USAGE_MSG, POSITIONAL_ARGS_MSG, OPTIONS_ARGS_MSG);
@@ -374,9 +381,21 @@ async fn main() {
     create_aft_dir().expect("Couldn't create directory");
 
     if cliargs.mode == RELAY_MODE {
-        info!("Running relay");
-        relay::init(&format!("0.0.0.0:{}", cliargs.port)).await.unwrap();
+        #[cfg(not(feature = "relay"))]
+        {
+            error!("Relay is not supported for this executable.");
+            return;
+        }
+
+        #[cfg(feature = "relay")]
+        run_relay(cliargs.port);
     } else if cliargs.mode == RECEIVER_MODE {
+        #[cfg(not(feature = "clients"))]
+        {
+            error!("Receiver is not supported for this executable.");
+            return;
+        }
+
         let mut pass = SData(rpassword::prompt_password("Password (press Enter to generate one): ").expect("Couldn't read password"));
         if pass.0.is_empty() {
             pass = SData(generate_passphrase(PASSPHRASE_DEFAULT_LEN));
@@ -385,18 +404,27 @@ async fn main() {
         println!("Code: {}", generate_code_from_pub_ip());
         info!("Running receiver");
 
-        let res = match cliargs.algo {
-            Algo::Aes128 =>
-                clients::Receiver::new(&format!("0.0.0.0:{}", cliargs.port), create_128_encryptor).receive(pass, cliargs.threads),
-            Algo::Aes256 =>
-                clients::Receiver::new(&format!("0.0.0.0:{}", cliargs.port), create_256_encryptor).receive(pass, cliargs.threads),
-        };
+        #[cfg(feature = "clients")]
+        {
+            let res = match cliargs.algo {
+                Algo::Aes128 =>
+                    clients::Receiver::new(&format!("0.0.0.0:{}", cliargs.port), create_128_encryptor).receive(pass, cliargs.threads),
+                Algo::Aes256 =>
+                    clients::Receiver::new(&format!("0.0.0.0:{}", cliargs.port), create_256_encryptor).receive(pass, cliargs.threads),
+            };
 
-        match res {
-            Ok(b) => if b {info!("Finished successfully.")},
-            Err(e) => error!("{}", e),
+            match res {
+                Ok(b) => if b {info!("Finished successfully.")},
+                Err(e) => error!("{}", e),
+            }
         }
     } else if cliargs.mode == DOWNLOAD_MODE {
+        #[cfg(not(feature = "clients"))]
+        {
+            error!("Downloading is not supported for this executable.");
+            return;
+        }
+
         info!("Running downloader");
         let identifier = if let Some(ident) = cliargs.identifier {
             ident
@@ -408,16 +436,25 @@ async fn main() {
         }.to_string();
 
         let addr = &format!("{}:{}",cliargs.address.expect("No address specified"), cliargs.port);
-        let res = match cliargs.algo {
-            Algo::Aes128 => clients::Downloader::new(addr, identifier, create_128_encryptor).init(cliargs.threads),
-            Algo::Aes256=> clients::Downloader::new(addr, identifier, create_256_encryptor).init(cliargs.threads),
-        };
+        #[cfg(feature = "clients")]
+        {
+            let res = match cliargs.algo {
+                Algo::Aes128 => clients::Downloader::new(addr, identifier, create_128_encryptor).init(cliargs.threads),
+                Algo::Aes256=> clients::Downloader::new(addr, identifier, create_256_encryptor).init(cliargs.threads),
+            };
 
-        match res {
-            Ok(b) => if b {info!("Finished successfully.")},
-            Err(e) => error!("{}", e),
+            match res {
+                Ok(b) => if b {info!("Finished successfully.")},
+                Err(e) => error!("{}", e),
+            }
         }
     } else if cliargs.mode == SENDER_MODE {
+        #[cfg(not(feature = "sender"))]
+        {
+            error!("Sending is not supported for this executable.");
+            return;
+        }
+
         info!("Running sender");
         let pass = SData(rpassword::prompt_password("Password: ").expect("Couldn't read password"));
         let addr = match cliargs.address {
@@ -429,6 +466,7 @@ async fn main() {
         };
         let addr = &format!("{}:{}", &addr, cliargs.port);
 
+        #[cfg(feature = "sender")]
         match cliargs.algo {
             Algo::Aes128 => create_sender!(
                 create_128_encryptor,
