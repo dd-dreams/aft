@@ -39,13 +39,14 @@ const OPTIONS_ARGS_MSG: &str = "Optional arguments:
     -c --config CONFIG          Config location.
     -v --version                Show version.
     -e --encryption ALGORITHM   Possible values: [AES128, AES256].
-    -t --threads THREADS        Number of threads to use.";
+    -t --threads THREADS        Number of threads to use.
+    -s --checksum               Check checksum at the end. Only relevant if mode == sender.";
 const PASSPHRASE_DEFAULT_LEN: u8 = 6;
 
 macro_rules! create_sender {
     ($algo:ident, $cliargs:ident, $sen_ident:expr, $addr:ident, $pass:ident) => {
         {
-            let mut sender = Sender::new($addr, $algo);
+            let mut sender = Sender::new($addr, $algo, $cliargs.checksum);
 
             let init = sender.init($cliargs.filename, $sen_ident,
                     $cliargs.identifier, $pass);
@@ -69,7 +70,8 @@ struct CliArgs<'a> {
     verbose: u8,
     filename: &'a str,
     algo: Algo,
-    threads: usize
+    threads: usize,
+    pub checksum: bool,
 }
 
 impl<'a> CliArgs<'a> {
@@ -84,7 +86,8 @@ impl<'a> CliArgs<'a> {
             algo: Algo::Aes128,
             // SAFETY: 4 != 0
             threads: std::thread::available_parallelism()
-                .unwrap_or(std::num::NonZero::new(4).unwrap()).get()
+                .unwrap_or(std::num::NonZero::new(4).unwrap()).get(),
+            checksum: false,
         }
     }
 
@@ -287,8 +290,10 @@ async fn main() {
         return;
     }
 
-    for i in (2..args.len()).step_by(2) {
+    let mut i = 2;
+    while i < args.len() {
         let arg = &args[i];
+        i += 1;
         if ["--address", "-a"].contains(&arg.as_str()) {
             if cliargs.is_relay_receiver() {
                 println!("Can't use {} argument when mode==relay | receiver", arg);
@@ -296,7 +301,7 @@ async fn main() {
             }
 
             // Remove http(s):// since aft doesn't support HTTPS.
-            let no_http_addr = args[i + 1].replace("http://", "").replace("https://", "");
+            let no_http_addr = args[i].replace("http://", "").replace("https://", "");
             // If it's an IP
             let addr = if format!("{}:{}", no_http_addr, cliargs.port).parse::<Ipv4Addr>().is_ok() {
                 no_http_addr
@@ -313,7 +318,7 @@ async fn main() {
 
             cliargs.set_address(addr);
         } else if ["--port", "-p"].contains(&arg.as_str()) {
-            cliargs.set_port(if let Ok(v) = args[i + 1].parse() {
+            cliargs.set_port(if let Ok(v) = args[i].parse() {
                 v
             } else {
                 println!("Not a port.");
@@ -324,9 +329,9 @@ async fn main() {
                 println!("Can't use {} argument when mode==relay,receiver", arg);
                 return;
             }
-            cliargs.set_identifier(&args[i + 1]);
+            cliargs.set_identifier(&args[i]);
         } else if ["--verbose", "-v"].contains(&arg.as_str()) {
-            cliargs.set_verbose(if let Ok(v) = args[i + 1].parse() {
+            cliargs.set_verbose(if let Ok(v) = args[i].parse() {
                 verbose_mode = v;
                 v
             } else {
@@ -334,7 +339,7 @@ async fn main() {
                 return;
             });
         } else if ["--config", "-c"].contains(&arg.as_str()) {
-            config = match Config::new(&args[i + 1]) {
+            config = match Config::new(&args[i]) {
                 Ok(v) => v,
                 Err(_) => {
                     println!("Invalid config location");
@@ -342,18 +347,21 @@ async fn main() {
                 }
             }
         } else if ["--encryption", "-e"].contains(&arg.as_str()) {
-            cliargs.set_algo(&args[i+1]);
-        } else if cliargs.is_sender() && i == args.len() - 1 {
+            cliargs.set_algo(&args[i]);
+        } else if cliargs.is_sender() && i == args.len() {
             cliargs.set_filename(args.last().expect("No filename provided."));
-        } else if ["--threads", "-t"].contains(&arg.as_str()) {
-            if !cliargs.set_threads(args[i+1].parse().expect("Invalid threads input")) {
-                println!("Invalid number of threads");
-                return;
-            }
+        } else if ["--threads", "-t"].contains(&arg.as_str()) &&
+            !cliargs.set_threads(args[i].parse().expect("Invalid threads input")) {
+            println!("Invalid number of threads");
+            return;
+        } else if ["-s", "--checksum"].contains(&arg.as_str()) {
+            cliargs.checksum = true;
+            i -= 1;
         } else {
             println!("Unknown argument {}", arg);
             return;
         }
+        i += 1;
     }
 
     let verbose_mode = match verbose_mode {

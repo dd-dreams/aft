@@ -54,6 +54,7 @@ pub struct Sender<T> {
     file_path: String,
     current_pos: u64,
     gen_encryptor: fn(&[u8]) -> T,
+    will_checksum: bool,
 }
 
 impl<T> BaseSocket<T> for Sender<T>
@@ -95,13 +96,14 @@ where
     T: AeadInPlace + Sync,
 {
     /// Constructs a new Sender struct, and connects to `remote_ip`.
-    pub fn new(remote_addr: &str, encryptor_func: fn(&[u8]) -> T) -> Self {
+    pub fn new(remote_addr: &str, encryptor_func: fn(&[u8]) -> T, will_checksum: bool) -> Self {
         let socket = TcpStream::connect(remote_addr).expect("Couldn't connect.");
         Sender {
             writer: SWriter(socket, EncAlgo::<T>::new(&[0u8; KEY_LENGTH], encryptor_func)),
             file_path: String::new(),
             current_pos: 0,
             gen_encryptor: encryptor_func,
+            will_checksum,
         }
     }
 
@@ -253,6 +255,7 @@ where
                 size: file_path.metadata()?.len(),
                 modified: file_path.metadata()?.modified()?.duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default().as_secs(),
+                will_checksum: self.will_checksum,
             }
         };
 
@@ -349,11 +352,13 @@ where
 
         debug!("\nReached EOF");
 
-        debug!("Computing checksum ...");
-        file.compute_checksum(u64::MAX)?;
+        if self.will_checksum {
+            debug!("Computing checksum ...");
+            file.compute_checksum(u64::MAX)?;
 
-        debug!("Ending file transfer and writing checksum");
-        self.writer.write_ext(&mut file.checksum())?;
+            debug!("Ending file transfer and writing checksum");
+            self.writer.write_ext(&mut file.checksum())?;
+        }
 
         self.writer.0.shutdown(std::net::Shutdown::Write)?;
 

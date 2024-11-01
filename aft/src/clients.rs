@@ -216,7 +216,8 @@ where
     /// Only the receiver uses this method.
     ///
     /// Returns the file-checksum of the sender's.
-    fn read_write_data(&mut self, file: &mut FileOperations, supposed_len: u64, num_threads: usize) -> Result<Vec::<u8>, Errors> {
+    fn read_write_data(&mut self, file: &mut FileOperations, supposed_len: u64, num_threads: usize,
+        will_checksum: bool) -> Result<Vec::<u8>, Errors> {
         info!("Reading file chunks ...");
         const AES_ADD: usize = AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE;
         const CHUNK_SIZE: usize = MAX_CONTENT_LEN + AES_ADD;
@@ -236,14 +237,18 @@ where
             let _read_bytes = file.file.write_vectored(&io_sliced_buf)?;
         }
 
-        let mut checksum = [0; MAX_CHECKSUM_LEN + AES_ADD];
-        reader.read_exact(&mut checksum)?;
-
         file.set_len(supposed_len)?;
+
+        let mut checksum = [0; MAX_CHECKSUM_LEN + AES_ADD];
+        if will_checksum {
+            debug!("Computing checksum ...");
+            reader.read_exact(&mut checksum)?;
+        }
+
 
         // Returns the sender's checksum
         Ok(
-            decrypt_aes_gcm!(self.get_writer().1, checksum)
+            if will_checksum { decrypt_aes_gcm!(self.get_writer().1, checksum) } else {checksum.to_vec()}
             )
     }
 
@@ -311,19 +316,22 @@ where
         }
 
         let filename = metadata["metadata"]["filename"].as_str().unwrap_or("null");
+        let will_checksum = metadata["will_checksum"].as_bool().unwrap_or(false);
 
-        let recv_checksum = self.read_write_data(&mut file, sizeb, num_threads)?;
+        let recv_checksum = self.read_write_data(&mut file, sizeb, num_threads, will_checksum)?;
 
-        info!("Computing checksum ...");
-        file.compute_checksum(u64::MAX)?;
+        if will_checksum {
+            info!("Computing checksum ...");
+            file.compute_checksum(u64::MAX)?;
 
-        // If the checksum isn't valid
-        if recv_checksum != file.checksum() {
-            error!("Checksum not equal.");
-            if get_accept_input("Keep the file? ").expect("Couldn't read answer") != 'y' {
-                FileOperations::rm(&format!("{}/{}/.{}.tmp", get_home_dir(), AFT_DIRNAME, filename))?;
+            // If the checksum isn't valid
+            if recv_checksum != file.checksum() {
+                error!("Checksum not equal.");
+                if get_accept_input("Keep the file? ").expect("Couldn't read answer") != 'y' {
+                    FileOperations::rm(&format!("{}/{}/.{}.tmp", get_home_dir(), AFT_DIRNAME, filename))?;
+                }
+                return Ok(false);
             }
-            return Ok(false);
         }
 
         let modified_time = metadata["metadata"]["modified"].as_u64().unwrap_or(0);
