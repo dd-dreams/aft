@@ -109,9 +109,8 @@ impl<'a> CliArgs<'a> {
         true
     }
 
-    pub fn set_port(&mut self, port: u16) -> bool {
+    pub fn set_port(&mut self, port: u16) {
         self.port = port;
-        true
     }
 
     pub fn set_identifier(&mut self, identifier: &'a str) -> bool {
@@ -301,72 +300,83 @@ fn main() {
     while i < args.len() {
         let arg = &args[i];
         i += 1;
-        if ["--address", "-a"].contains(&arg.as_str()) {
-            if cliargs.is_relay_receiver() {
-                println!("Can't use {} argument when mode==relay | receiver", arg);
-                return;
-            }
 
-            // Remove http(s):// since aft doesn't support HTTPS.
-            let no_http_addr = args[i].replace("http://", "").replace("https://", "");
-            // If it's an IP
-            let addr = if format!("{}:{}", no_http_addr, cliargs.port).parse::<Ipv4Addr>().is_ok() {
-                no_http_addr
-            // If It's some domain or some other address
-            } else {
-                match (no_http_addr, cliargs.port).to_socket_addrs() {
+        match arg.as_str() {
+            "-a" | "--address" => {
+                if cliargs.is_relay_receiver() {
+                    println!("Can't use {} argument when mode==relay | receiver", arg);
+                    return;
+                }
+
+                // Remove http(s):// since aft doesn't support HTTPS.
+                let no_http_addr = args[i].replace("http://", "").replace("https://", "");
+                // If it's an IP
+                let addr = if format!("{}:{}", no_http_addr, cliargs.port).parse::<Ipv4Addr>().is_ok() {
+                    no_http_addr
+                // If It's some domain or some other address
+                } else {
+                    match (no_http_addr, cliargs.port).to_socket_addrs() {
+                        Ok(v) => v,
+                        Err(_) => {
+                            error!("Address is invalid.");
+                            return;
+                        }
+                    }.next().expect("Couldn't resolve address.").ip().to_string()
+                };
+
+                cliargs.set_address(addr);
+            },
+            "-p" | "--port" => cliargs.set_port(if let Ok(v) = args[i].parse() {
+                v
+                } else {
+                    println!("Not a port.");
+                    return;
+            }),
+            "-i" | "--identifier" => {
+                if cliargs.is_relay_receiver() {
+                    println!("Can't use {} argument when mode==relay,receiver", arg);
+                    return;
+                }
+                cliargs.set_identifier(&args[i]);
+            },
+            "-v" | "--verbose" => {
+                if !cliargs.set_verbose(if let Ok(v) = args[i].parse() {
+                    verbose_mode = v;
+                    v
+                } else {
+                    println!("Invalid verbose level.");
+                    return;
+                }) {
+                    println!("Invalid verbose level.");
+                }
+            },
+            "-c" | "--config" => {
+                config = match Config::new(&args[i]) {
                     Ok(v) => v,
                     Err(_) => {
-                        error!("Address is invalid.");
+                        println!("Invalid config location");
                         return;
                     }
-                }.next().expect("Couldn't resolve address.").ip().to_string()
-            };
+                }
+            },
+            "-e" | "--encryption" => cliargs.set_algo(&args[i]),
 
-            cliargs.set_address(addr);
-        } else if ["--port", "-p"].contains(&arg.as_str()) {
-            cliargs.set_port(if let Ok(v) = args[i].parse() {
-                v
-            } else {
-                println!("Not a port.");
+            "-t" | "--threads" => if !cliargs.set_threads(args[i].parse().expect("Invalid threads input")) {
+                println!("Invalid number of threads");
                 return;
-            });
-        } else if ["--identifier", "-i"].contains(&arg.as_str()) {
-            if cliargs.is_relay_receiver() {
-                println!("Can't use {} argument when mode==relay,receiver", arg);
-                return;
-            }
-            cliargs.set_identifier(&args[i]);
-        } else if ["--verbose", "-v"].contains(&arg.as_str()) {
-            cliargs.set_verbose(if let Ok(v) = args[i].parse() {
-                verbose_mode = v;
-                v
-            } else {
-                println!("Invalid verbose level.");
-                return;
-            });
-        } else if ["--config", "-c"].contains(&arg.as_str()) {
-            config = match Config::new(&args[i]) {
-                Ok(v) => v,
-                Err(_) => {
-                    println!("Invalid config location");
+            },
+            "-s" | "--checksum" => {
+                cliargs.checksum = true;
+                i -= 1;
+            },
+            _ => {
+                if cliargs.is_sender() && i == args.len() {
+                    cliargs.set_filename(&args[i-1]);
+                } else {
+                    println!("Unknown argument {}", arg);
                     return;
                 }
             }
-        } else if ["--encryption", "-e"].contains(&arg.as_str()) {
-            cliargs.set_algo(&args[i]);
-        } else if cliargs.is_sender() && i == args.len() {
-            cliargs.set_filename(args.last().expect("No filename provided."));
-        } else if ["--threads", "-t"].contains(&arg.as_str()) &&
-            !cliargs.set_threads(args[i].parse().expect("Invalid threads input")) {
-            println!("Invalid number of threads");
-            return;
-        } else if ["-s", "--checksum"].contains(&arg.as_str()) {
-            cliargs.checksum = true;
-            i -= 1;
-        } else {
-            println!("Unknown argument {}", arg);
-            return;
         }
         i += 1;
     }
