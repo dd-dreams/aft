@@ -350,7 +350,8 @@ where
             }
         }
 
-        debug!("\nReached EOF");
+        println!();
+        debug!("Reached EOF");
 
         if self.will_checksum {
             debug!("Computing checksum ...");
