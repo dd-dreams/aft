@@ -15,7 +15,7 @@ pub const MAX_IDENTIFIER_LEN: usize = 10;
 /// Maximum buffer length that is received from a stream.
 pub const MAX_METADATA_LEN: usize = MAX_FILENAME_LEN + MAX_TYPE_LEN + MAX_SIZE_LEN + MAX_MODIFIED_LEN + 40 /* 40 = other chars such as { */;
 /// Maximum size of a chunk.
-pub const MAX_CONTENT_LEN: usize = 8192;
+pub const MAX_CONTENT_LEN: usize = 16384;
 /// Maximum checksum length (Sha256 length in bytes).
 pub const MAX_CHECKSUM_LEN: usize = 32;
 /// Length of a blocks column.
