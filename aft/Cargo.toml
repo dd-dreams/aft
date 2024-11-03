@@ -1,6 +1,6 @@
 [package]
 name = "aft"
-version = "7.0.7"
+version = "8.0.0"
 edition = "2021"
 authors.workspace = true
 homepage.workspace = true
