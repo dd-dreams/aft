@@ -47,6 +47,7 @@ Optional arguments:
     -v --version                Show version.
     -e --encryption ALGORITHM   Possible values: [AES128, AES256].
     -t --threads THREADS        Number of threads to use.
+    -s --checksum               Check checksum at the end. Only relevant if mode == sender.
 ```
 
 # Installation
