@@ -48,7 +48,7 @@ const PASSPHRASE_DEFAULT_LEN: u8 = 6;
 macro_rules! create_sender {
     ($algo:ident, $cliargs:ident, $sen_ident:expr, $addr:ident, $pass:ident) => {
         {
-            let mut sender = sender::Sender::new($addr, $algo, $cliargs.checksum);
+            let mut sender = sender::Sender::new($addr, $algo, $cliargs.checksum, $cliargs.algo);
 
             let init = sender.init($cliargs.filename, $sen_ident,
                     $cliargs.identifier, $pass);
@@ -421,6 +421,7 @@ fn main() {
                     clients::Receiver::new(&format!("0.0.0.0:{}", cliargs.port), create_128_encryptor).receive(pass, cliargs.threads),
                 Algo::Aes256 =>
                     clients::Receiver::new(&format!("0.0.0.0:{}", cliargs.port), create_256_encryptor).receive(pass, cliargs.threads),
+                _ => {error!("Unknown encryption algorithm."); return}
             };
 
             match res {
@@ -451,6 +452,7 @@ fn main() {
             let res = match cliargs.algo {
                 Algo::Aes128 => clients::Downloader::new(addr, identifier, create_128_encryptor).init(cliargs.threads),
                 Algo::Aes256=> clients::Downloader::new(addr, identifier, create_256_encryptor).init(cliargs.threads),
+                _ => {error!("Unknown encryption algorithm."); return}
             };
 
             match res {
@@ -490,6 +492,7 @@ fn main() {
                 config.get_identifier().expect("No sender identifier provided."),
                 addr, pass
                 ),
+            _ => {error!("Unknown encryption algorithm."); return}
         }
     } else {
         error!("Unknown mode.");

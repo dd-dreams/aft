@@ -23,29 +23,31 @@ pub enum EncryptionErrors {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Algo {
-    /// Over the socket it's represented as "0".
     Aes128,
-    /// Over the socket it's represented as "1".
     Aes256,
+    Unknown,
 }
 
 impl From<&str> for Algo {
     fn from(v: &str) -> Self {
         match v {
+            "aes128" => Algo::Aes128,
             "aes256" => Algo::Aes256,
-            _ => Algo::Aes128,
+            _ => Algo::Unknown
         }
     }
 }
 
-impl From<u8> for Algo {
-    fn from(v: u8) -> Self {
+impl From<&Algo> for &str {
+    fn from(v: &Algo) -> Self {
         match v {
-            1 => Algo::Aes256,
-            _ => Algo::Aes128
+            Algo::Aes128 => "aes128",
+            Algo::Aes256 => "aes256",
+            Algo::Unknown => "unknown"
         }
     }
 }
+
 
 // Creates a new AES-GCM encryptor.
 macro_rules! create_aes_gcm_encryptor {

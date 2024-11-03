@@ -11,7 +11,7 @@ use crate::{
     },
 };
 use aft_crypto::{
-    data::{AeadInPlace, EncAlgo, EncryptorBase, SData},
+    data::{AeadInPlace, Algo, EncAlgo, EncryptorBase, SData},
     exchange::{PublicKey, KEY_LENGTH},
 };
 use json;
@@ -55,6 +55,7 @@ pub struct Sender<T> {
     current_pos: u64,
     gen_encryptor: fn(&[u8]) -> T,
     will_checksum: bool,
+    algo: Algo,
 }
 
 impl<T> BaseSocket<T> for Sender<T>
@@ -96,7 +97,7 @@ where
     T: AeadInPlace + Sync,
 {
     /// Constructs a new Sender struct, and connects to `remote_ip`.
-    pub fn new(remote_addr: &str, encryptor_func: fn(&[u8]) -> T, will_checksum: bool) -> Self {
+    pub fn new(remote_addr: &str, encryptor_func: fn(&[u8]) -> T, will_checksum: bool, algo: Algo) -> Self {
         let socket = TcpStream::connect(remote_addr).expect("Couldn't connect.");
         Sender {
             writer: SWriter(socket, EncAlgo::<T>::new(&[0u8; KEY_LENGTH], encryptor_func)),
@@ -104,6 +105,7 @@ where
             current_pos: 0,
             gen_encryptor: encryptor_func,
             will_checksum,
+            algo,
         }
     }
 
@@ -203,7 +205,9 @@ where
     ///         "filetype": "<filetype>",
     ///         "filename": "<filename>",
     ///         "size": "<file size in bytes>",
-    ///         "modified": "<date>"
+    ///         "modified": "<date>",
+    ///         "will_checksum": bool,
+    ///         "algo": "<encryption algorithm>"
     ///     }
     /// }
     /// ```
@@ -256,6 +260,7 @@ where
                 modified: file_path.metadata()?.modified()?.duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default().as_secs(),
                 will_checksum: self.will_checksum,
+                algo: Into::<&str>::into(&self.algo)
             }
         };
 
