@@ -483,13 +483,13 @@ fn main() {
             Algo::Aes128 => create_sender!(
                 create_128_encryptor,
                 cliargs,
-                config.get_identifier().expect("No sender identifier provided."),
+                config.get_identifier().unwrap_or(&String::new()),
                 addr, pass
                 ),
             Algo::Aes256 => create_sender!(
                 create_256_encryptor,
                 cliargs,
-                config.get_identifier().expect("No sender identifier provided."),
+                config.get_identifier().unwrap_or(&String::new()),
                 addr, pass
                 ),
             _ => {error!("Unknown encryption algorithm."); return}
