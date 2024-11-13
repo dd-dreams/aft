@@ -394,7 +394,6 @@ fn main() {
         #[cfg(not(feature = "relay"))]
         {
             error!("Relay is not supported for this executable.");
-            return;
         }
 
         #[cfg(feature = "relay")]
