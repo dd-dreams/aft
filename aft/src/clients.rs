@@ -218,23 +218,27 @@ where
     /// Returns the file-checksum of the sender's.
     fn read_write_data(&mut self, file: &mut FileOperations, supposed_len: u64, num_threads: usize,
         will_checksum: bool) -> Result<Vec::<u8>, Errors> {
-        info!("Reading file chunks ...");
         const AES_ADD: usize = AES_GCM_NONCE_SIZE + AES_GCM_TAG_SIZE;
         const CHUNK_SIZE: usize = MAX_CONTENT_LEN + AES_ADD;
-        let mut buffer = vec![0; num_threads * CHUNK_SIZE];
+
+        info!("Reading file chunks ...");
+
+        let mut buffer = vec![0; CHUNK_SIZE * num_threads];
         let encryptor = self.get_writer().1.clone();
         let mut reader = BufReader::with_capacity(buffer.len(), self.get_mut_writer().0.try_clone()?);
 
         while file.len()? <= supposed_len {
             reader.read_exact(&mut buffer)?;
 
-            let decrypted_buffer: Vec<Vec<u8>> = buffer.par_chunks_exact(CHUNK_SIZE).map(|chunk|
-                decrypt_aes_gcm!(encryptor, chunk)
-                ).collect();
-            let io_sliced_buf: Vec<IoSlice> = decrypted_buffer.iter()
-                .map(|x| IoSlice::new(x)).collect();
+            buffer.par_chunks_exact_mut(CHUNK_SIZE).for_each(|chunk| {
+                let (data, nonce) = chunk.split_at_mut(chunk.len()-AES_GCM_NONCE_SIZE);
+                encryptor.decrypt_in_place_detached(data, nonce).expect("Can't decrypt");
+            });
 
-            let _read_bytes = file.file.write_vectored(&io_sliced_buf)?;
+            let io_sliced_buf: Vec<IoSlice> = buffer.par_chunks_exact(CHUNK_SIZE).map(|chunk|
+                IoSlice::new(&chunk[..chunk.len()-AES_GCM_NONCE_SIZE])).collect();
+
+            file.file.write_vectored(&io_sliced_buf)?;
         }
 
         file.set_len(supposed_len)?;

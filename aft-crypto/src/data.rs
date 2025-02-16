@@ -1,9 +1,10 @@
 //! Data encryption with AEAD (Authenticated encryption).
 pub use aes_gcm::{
     aead::{generic_array::GenericArray, rand_core::RngCore, AeadInPlace, KeyInit, OsRng},
-    Aes128Gcm, Aes256Gcm, Nonce,
+    Aes128Gcm, Aes256Gcm, Nonce, Tag, TagSize
 };
 use crate::exchange::KEY_LENGTH;
+use crate::errors::EncryptionErrors;
 use zeroize::Zeroize;
 
 pub type Result<T> = core::result::Result<T, EncryptionErrors>;
@@ -13,13 +14,6 @@ pub type AesGcm256Enc = EncAlgo<Aes256Gcm>;
 /// Nonce size (in bytes) of AES-GCM (excludes 0)
 pub const AES_GCM_NONCE_SIZE: usize = 12;
 pub const AES_GCM_TAG_SIZE: usize = 16;
-
-#[derive(Debug)]
-pub enum EncryptionErrors {
-    FailedEncrypt,
-    FailedDecrypt,
-    IncorrectPassword,
-}
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Algo {
@@ -111,6 +105,20 @@ where
         if self.get_encryptor().decrypt_in_place(nonce, b"", data).is_err() {
             return Err(EncryptionErrors::FailedDecrypt);
         }
+
+        Ok(())
+    }
+
+    fn decrypt_in_place_detached(&self, data: &mut [u8], nonce: &[u8]) -> Result<()> {
+        if data.len() < AES_GCM_TAG_SIZE {
+            return Err(EncryptionErrors::InvalidLength);
+        }
+
+        let tag_pos = data.len() - AES_GCM_TAG_SIZE;
+        let (d, tag) = data.as_mut().split_at_mut(tag_pos);
+        // TODO: remove expect
+        self.get_encryptor().
+            decrypt_in_place_detached(nonce.into(), b"", d, Tag::from_slice(tag)).expect("FailedDecrypting");
 
         Ok(())
     }
