@@ -236,7 +236,7 @@ where
             });
 
             let io_sliced_buf: Vec<IoSlice> = buffer.par_chunks_exact(CHUNK_SIZE).map(|chunk|
-                IoSlice::new(&chunk[..chunk.len()-AES_GCM_NONCE_SIZE])).collect();
+                IoSlice::new(&chunk[..chunk.len()-AES_ADD])).collect();
 
             file.file.write_vectored(&io_sliced_buf)?;
         }
@@ -248,7 +248,6 @@ where
             debug!("Computing checksum ...");
             reader.read_exact(&mut checksum)?;
         }
-
 
         // Returns the sender's checksum
         Ok(
@@ -320,7 +319,7 @@ where
         }
 
         let filename = metadata["metadata"]["filename"].as_str().unwrap_or("null");
-        let will_checksum = metadata["will_checksum"].as_bool().unwrap_or(false);
+        let will_checksum = metadata["metadata"]["will_checksum"].as_bool().unwrap_or(false);
 
         let recv_checksum = self.read_write_data(&mut file, sizeb, num_threads, will_checksum)?;
 
