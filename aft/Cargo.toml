@@ -19,10 +19,11 @@ sha2 = "0.10"
 rpassword = "7.2"
 aft-crypto = {path = "../aft-crypto", version = "1"}
 rayon = "1.10"
+whirlwind = { git = "https://github.com/fortress-build/whirlwind.git", optional = true }
 
 [features]
 default = ["clients", "sender"]
-relay = ["dep:tokio"]
+relay = ["dep:tokio", "dep:whirlwind"]
 clients = []
 sender = []
 full = ["clients", "sender", "relay"]

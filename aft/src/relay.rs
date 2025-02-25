@@ -5,18 +5,16 @@ use crate::{
 };
 use log::{debug, error, info};
 use sha2::{Digest, Sha256};
-use std::{collections::HashMap, io, sync::Arc};
+use std::{io, sync::Arc};
 use tokio::{
-
     io::{AsyncReadExt, AsyncWriteExt, copy_bidirectional},
     net::{TcpListener, TcpStream},
-    sync::RwLock,
 };
+use whirlwind::ShardMap;
+
 
 type Identifier = String;
-type ClientsHashMap = HashMap<Identifier, TcpStream>;
-/// Moveable type between threads.
-type MovT<T> = Arc<RwLock<T>>;
+type ClientsHashMap = ShardMap<Identifier, TcpStream>;
 
 macro_rules! error_conn {
     ($comm:expr, $ip:expr) => {
@@ -33,10 +31,10 @@ macro_rules! error_conn {
     };
 }
 
-async fn handle_sender(sender: &mut TcpStream, clients: MovT<ClientsHashMap>, recv_identifier: &str, sen_identifier: &str) ->
+async fn handle_sender(sender: &mut TcpStream, clients: Arc<ClientsHashMap>, recv_identifier: &String, sen_identifier: &str) ->
     io::Result<bool>
 {
-    let mut receiver: TcpStream;
+    let mut receiver;
     let sender_ip = sender.peer_addr()?;
 
     debug!("{} wants to transfer to {}", sen_identifier, recv_identifier);
@@ -52,7 +50,7 @@ async fn handle_sender(sender: &mut TcpStream, clients: MovT<ClientsHashMap>, re
             sender.write_all(Signals::OK.as_bytes()).await?;
         }
 
-        receiver = clients.write().await.remove(recv_identifier).unwrap();
+        receiver = clients.remove(recv_identifier).await.unwrap();
     }
 
     // Read signal from the sender
@@ -79,7 +77,7 @@ async fn handle_sender(sender: &mut TcpStream, clients: MovT<ClientsHashMap>, re
         Signals::Error => {
             debug!("{} rejected {}", recv_identifier, sender_ip);
             // Keep the receiver listening
-            clients.write().await.insert(recv_identifier.to_string(), receiver);
+            clients.insert(recv_identifier.to_string(), receiver).await;
             return Ok(false)
         },
         Signals::OK =>
@@ -95,8 +93,8 @@ async fn handle_sender(sender: &mut TcpStream, clients: MovT<ClientsHashMap>, re
     Ok(true)
 }
 
-pub async fn is_ident_exists(clients: MovT<ClientsHashMap>, identifier: &str) -> bool {
-    clients.read().await.contains_key(identifier)
+pub async fn is_ident_exists(clients: Arc<ClientsHashMap>, identifier: &String) -> bool {
+    clients.contains_key(identifier).await
 }
 
 async fn read_identifier(socket: &mut TcpStream) -> io::Result<String> {
@@ -111,7 +109,7 @@ async fn read_identifier(socket: &mut TcpStream) -> io::Result<String> {
 /// Error when there is a connection error.
 pub async fn init(address: &str) -> io::Result<()> {
     let listener = TcpListener::bind(address).await?;
-    let hashmap_clients = Arc::new(RwLock::new(ClientsHashMap::new()));
+    let hashmap_clients = Arc::new(ClientsHashMap::new());
 
     info!("Listening ...");
     loop {
@@ -132,21 +130,21 @@ pub async fn init(address: &str) -> io::Result<()> {
                     return;
                 }
 
-                let mut clients_writeable = clients.write().await;
-                if let Some(recv_sock) = clients_writeable.get_mut(&identifier) {
+                if let Some(mut recv_sock) = clients.get_mut(&identifier).await {
                     // Connectivity check
                     error_conn!(recv_sock.write_all(Signals::Other.as_bytes()).await, addr);
+
                     if recv_sock.read_u8().await.is_err() {
                         debug!("{} disconnected", identifier);
-                        clients_writeable.remove(&identifier);
+                        clients.remove(&identifier).await;
                     } else {
-                        debug!("Signaling to {}: {} identifier is not available", addr, identifier);
+                        debug!("Signaling to {}: \"{}\" identifier is not available", addr, identifier);
                         // Signal that someone is already connected with this identifier
                         error_conn!(socket.write_all(Signals::Error.as_bytes()).await, addr);
                         return;
                     }
                 }
-                clients_writeable.insert(identifier, socket);
+                clients.insert(identifier, socket).await;
             }
             // The sender (socket = sender)
             else {

@@ -336,8 +336,7 @@ where
             let io_sliced_buf: Vec<IoSlice> = encrypted_buffer.iter()
                 .map(|x| IoSlice::new(x)).collect();
 
-            // TODO: Hopefully anytime soon `write_all_vectored` will be stabilized
-            let _read_bytes = new_writer.write_vectored(&io_sliced_buf)?;
+            let _written_bytes = new_writer.write_vectored(&io_sliced_buf)?;
 
             // Progress bar
             update_pb(&mut curr_bars_count, pb_length, self.current_pos);
