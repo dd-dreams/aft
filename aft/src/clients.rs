@@ -245,7 +245,6 @@ where
 
         let mut checksum = [0; MAX_CHECKSUM_LEN + AES_ADD];
         if will_checksum {
-            debug!("Computing checksum ...");
             reader.read_exact(&mut checksum)?;
         }
 
@@ -324,7 +323,7 @@ where
         let recv_checksum = self.read_write_data(&mut file, sizeb, num_threads, will_checksum)?;
 
         if will_checksum {
-            info!("Computing checksum ...");
+            info!("Verifiying ...");
             file.compute_checksum(u64::MAX)?;
 
             // If the checksum isn't valid

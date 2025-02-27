@@ -358,7 +358,7 @@ where
         debug!("Reached EOF");
 
         if self.will_checksum {
-            debug!("Computing checksum ...");
+            info!("Verifying ...");
             file.compute_checksum(u64::MAX)?;
 
             debug!("Ending file transfer and writing checksum");

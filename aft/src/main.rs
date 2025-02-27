@@ -267,7 +267,7 @@ async fn run_relay(port: u16) {
 
 fn main() {
     let args: Vec<String> = args_fn().collect();
-    if args.len() == 1 || args.len() > 9 {
+    if args.len() == 1 || args.len() > 16 {
         println!("{}\n\n{}\n\n{}\n{}", DESCR_MSG, USAGE_MSG, POSITIONAL_ARGS_MSG, OPTIONS_ARGS_MSG);
         return;
     }
