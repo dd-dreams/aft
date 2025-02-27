@@ -45,6 +45,7 @@ fn checks_open_file(filename: &str) -> io::Result<(FileOperations, bool)> {
 /// A safe writer. Acts like a normal writer only that it encrypts the connection.
 pub struct SWriter<T, W>(pub W, pub EncAlgo<T>);
 
+#[cfg(feature = "relay")]
 struct UserBlocks {
     file: FileOperations,
 }
@@ -130,6 +131,7 @@ where
     }
 }
 
+#[cfg(feature = "relay")]
 impl UserBlocks {
     /// Constructor.
     pub fn new(path: &str) -> io::Result<Self> {
@@ -365,6 +367,7 @@ pub trait Crypto {
     }
 }
 
+#[cfg(feature = "relay")]
 pub struct Downloader<T> {
     writer: SWriter<T, TcpStream>,
     ident: String,
@@ -372,6 +375,7 @@ pub struct Downloader<T> {
     blocks: UserBlocks,
 }
 
+#[cfg(feature = "relay")]
 impl<T> BaseSocket<T> for Downloader<T>
 where
     T: AeadInPlace + Sync,
@@ -391,6 +395,7 @@ where
     }
 }
 
+#[cfg(feature = "relay")]
 impl<T> Crypto for Downloader<T>
 where
     T: AeadInPlace,
@@ -409,6 +414,7 @@ where
     }
 }
 
+#[cfg(feature = "relay")]
 impl<T> Downloader<T>
 where
     T: AeadInPlace + Sync,

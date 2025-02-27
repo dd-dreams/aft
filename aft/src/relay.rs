@@ -1,3 +1,4 @@
+#![cfg(feature = "relay")]
 //! Handling relay functionality.
 use crate::{
     constants::{CLIENT_RECV, MAX_IDENTIFIER_LEN, RELAY, SIGNAL_LEN},

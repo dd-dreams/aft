@@ -430,7 +430,7 @@ fn main() {
             }
         }
     } else if cliargs.mode == DOWNLOAD_MODE {
-        #[cfg(not(feature = "clients"))]
+        #[cfg(not(feature = "relay"))]
         {
             error!("Downloading is not supported for this executable.");
             return;
@@ -447,7 +447,7 @@ fn main() {
         }.to_string();
 
         let addr = &format!("{}:{}",cliargs.address.expect("No address specified"), cliargs.port);
-        #[cfg(feature = "clients")]
+        #[cfg(feature = "relay")]
         {
             let res = match cliargs.algo {
                 Algo::Aes128 => clients::Downloader::new(addr, identifier, create_128_encryptor).init(cliargs.threads),
