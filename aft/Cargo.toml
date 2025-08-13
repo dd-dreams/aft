@@ -16,7 +16,7 @@ env_logger = "0.11"
 json = "0.12"
 log = "0.4"
 sha2 = "0.10"
-rpassword = "7.2"
+rpassword = "7.4"
 aft-crypto = {path = "../aft-crypto", version = "1"}
 rayon = "1.10"
 whirlwind = { git = "https://github.com/fortress-build/whirlwind.git", optional = true }
