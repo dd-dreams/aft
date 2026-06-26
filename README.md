@@ -1,4 +1,4 @@
-# <p align="center">aft<br>![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/dd-dreams/aft/.github%2Fworkflows%2Frust.yml)![GitHub release (with filter)](https://img.shields.io/github/v/release/dd-dreams/aft)
+# <p align="center">aft<br>[![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/dd-dreams/aft/.github%2Fworkflows%2Frust.yml)](https://github.com/dd-dreams/aft/actions) [![GitHub release (with filter)](https://img.shields.io/github/v/release/dd-dreams/aft)](https://github.com/dd-dreams/aft/releases)
 
 aft (Advanced File Transfer) is a minimal and secure tool for sharing files between two parties easily and efficiently. Works in Windows, Linux and macOS.
 
